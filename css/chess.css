@@ -1,0 +1,16 @@
+/* Add Chess specific styles here */
+#game-container {
+    /* Example: Chess board specific size */
+    width: 640px; /* 8 cells * 80px/cell */
+    height: 640px;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+}
+.chess-cell {
+    width: 80px; /* Example cell size */
+    height: 80px;
+}
+.chess-cell.light { background-color: #f0d9b5; }
+.chess-cell.dark { background-color: #b58863; }
+/* Styles for chess pieces */
