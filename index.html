@@ -17,6 +17,28 @@
             object-fit: cover; /* Ensures image covers area */
         }
     </style>
+    <!-- Firebase SDK (Client-side) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script>
+        // Your web app's Firebase configuration
+        // PASTE YOUR FIREBASE CLIENT CONFIG SNIPPET HERE
+        // It should look like this (but with your actual values):
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEZYdZH_yV2_UgKudWK94KK_RcO_RQ0k4",
+            authDomain: "chess-app-399e9.firebaseapp.com",
+            projectId: "chess-app-399e9",
+            storageBucket: "chess-app-399e9.firebasestorage.app",
+            messagingSenderId: "279867966438",
+            appId: "1:279867966438:web:e4770e84b79eaed6378c27",
+            measurementId: "G-SMPQK56WNG"
+            };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+    </script>
 </head>
 <body>
     <header>
@@ -24,35 +46,51 @@
         <nav>
             <a href="index.html">Home</a>
         </nav>
+        <div id="auth-section">
+            <span id="user-display" style="display: none;"></span>
+            <button id="auth-button"></button>
+        </div>
     </header>
 
-    <main class="game-selection">
-        <section class="game-card">
-            <img src="assets/images/ludo/ludo_icon.png" alt="Ludo">
-            <h2>Ludo</h2>
-            <p>Roll the dice and race your tokens home!</p>
-            <a href="games/ludo.html" class="play-button">Play Ludo</a>
-        </section>
+    <main>
+        <div id="login-register-form" style="display: none;">
+            <h2 id="auth-title">Login</h2>
+            <input type="email" id="auth-email" placeholder="Email" required>
+            <input type="password" id="auth-password" placeholder="Password" required>
+            <button id="login-button">Login</button>
+            <button id="register-button" style="display: none;">Register</button>
+            <p id="auth-error-message" style="color: red;"></p>
+            <button id="toggle-auth-mode">Need an account? Register</button>
+        </div>
 
-        <section class="game-card">
-            <img src="assets/images/chess/chess_icon.png" alt="Chess">
-            <h2>Chess</h2>
-            <p>The ultimate strategy board game.</p>
-            <a href="games/chess.html" class="play-button">Play Chess</a>
-        </section>
+        <section class="game-selection" style="display: none;">
+            <section class="game-card">
+                <img src="assets/images/ludo/ludo_icon.png" alt="Ludo">
+                <h2>Ludo</h2>
+                <p>Roll the dice and race your tokens home!</p>
+                <a href="games/ludo.html" class="play-button">Play Ludo</a>
+            </section>
 
-        <section class="game-card">
-            <img src="assets/images/uno/uno_icon.png" alt="Uno">
-            <h2>Uno</h2>
-            <p>Match colors or numbers, play action cards!</p>
-            <a href="games/uno.html" class="play-button">Play Uno</a>
-        </section>
+            <section class="game-card">
+                <img src="assets/images/chess/chess_icon.png" alt="Chess">
+                <h2>Chess</h2>
+                <p>The ultimate strategy board game.</p>
+                <a href="games/chess.html" class="play-button">Play Chess</a>
+            </section>
 
-        <section class="game-card">
-            <img src="assets/images/monopoly/monopoly_icon.png" alt="Monopoly">
-            <h2>Monopoly</h2>
-            <p>Buy, sell, build, and bankrupt your opponents!</p>
-            <a href="games/monopoly.html" class="play-button">Play Monopoly</a>
+            <section class="game-card">
+                <img src="assets/images/uno/uno_icon.png" alt="Uno">
+                <h2>Uno</h2>
+                <p>Match colors or numbers, play action cards!</p>
+                <a href="games/uno.html" class="play-button">Play Uno</a>
+            </section>
+
+            <section class="game-card">
+                <img src="assets/images/monopoly/monopoly_icon.png" alt="Monopoly">
+                <h2>Monopoly</h2>
+                <p>Buy, sell, build, and bankrupt your opponents!</p>
+                <a href="games/monopoly.html" class="play-button">Play Monopoly</a>
+            </section>
         </section>
     </main>
 

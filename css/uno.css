@@ -1,5 +1,5 @@
 /* Uno Specific Styles */
-#uno-game-area {
+#uno-game-area-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -79,4 +79,22 @@
     font-size: 1.1em;
     font-weight: bold;
     margin-bottom: 15px;
+}
+
+#uno-coming-soon-message {
+    text-align: center;
+    padding: 50px;
+    font-size: 1.5em;
+    color: #555;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    margin-top: 30px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#uno-coming-soon-message img {
+    margin-top: 25px;
+    max-width: 180px;
+    border-radius: 10px;
+    border: 2px solid #bbb;
 }

@@ -40,9 +40,9 @@
 
 .blue-base { background-color: #ddeeff; }
 .blue-base.house { background-color: #cceeff; border: 2px solid blue; }
-
+/* Note: Yellow tokens are 'orange', so bases should match. */
 .yellow-base { background-color: #ffffdd; }
-.yellow-base.house { background-color: #ffffcc; border: 2px solid orange; } /* Using orange for yellow tokens */
+.yellow-base.house { background-color: #ffffcc; border: 2px solid orange; }
 
 
 /* Start points for each color */
@@ -59,10 +59,19 @@
 
 /* Center home square */
 .center-home { background-color: #eee; border: 2px solid #333; }
-.center-home.red-center { background-color: red; }
-.center-home.green-center { background-color: green; }
-.center-home.blue-center { background-color: blue; }
-.center-home.yellow-center { background-color: orange; }
+.final-home {
+    background-color: #ccc; /* Generic final home color */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #555;
+}
+.final-home.red-finished { background-color: red; color: white; }
+.final-home.green-finished { background-color: green; color: white; }
+.final-home.blue-finished { background-color: blue; color: white; }
+.final-home.yellow-finished { background-color: orange; color: white; } /* Yellow uses orange */
 
 
 /* Safe cells (stars in real Ludo) - just different color here */

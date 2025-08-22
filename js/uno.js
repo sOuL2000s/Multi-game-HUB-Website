@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let gameMode = null;
     let gameActive = false;
     let myPlayerColor = null;
+    let myUID = null;
 
     function initializeGame(mode) {
         gameMode = mode;
@@ -23,6 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
         resetGameBtn.style.display = 'inline-block';
 
         if (gameMode === 'online-pvp') {
+            const user = firebase.auth().currentUser;
+            if (!user) {
+                alert("You must be logged in to play online PvP!");
+                location.reload();
+                return;
+            }
+            myUID = user.uid;
             chatContainer.style.display = 'block';
             connectToPvPServer();
             updateGameStatus('Connecting to online PvP for Uno...');
@@ -33,18 +41,30 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Uno game started in", mode, "mode.");
     }
 
-    // Placeholder for server messages in Uno (if online PvP)
     window.handleUnoServerMessage = function(message) {
+        const currentUser = firebase.auth().currentUser;
+        if (!currentUser) {
+            console.warn("Received server message but not logged in.");
+            return;
+        }
+        myUID = currentUser.uid;
+
         if (message.type === 'player_assigned') {
             myPlayerColor = message.color;
             updateGameStatus(`Connected! You are ${myPlayerColor.toUpperCase()}. Waiting for opponent...`);
-        } else if (message.type === 'game_state_update') {
-            updateGameStatus(`Uno game state updated. It's ${message.currentPlayer.toUpperCase()}'s turn.`);
-            // Here you would parse message.gameState and update the Uno game display.
-        } else if (message.type === 'chat_message') {
-            // Chat is handled in pvp.js directly, but could be passed here.
+        } else if (message.type === 'game_start' || message.type === 'game_state_update') {
+            updateGameStatus(`Uno game state updated. It's ${message.gameState.currentPlayerColor.toUpperCase()}'s turn.`);
+            console.log("Uno Game State Update:", message.gameState);
+            // Here, for a real game, you would parse message.gameState and update the Uno display.
+        } else if (message.type === 'error') {
+            updateGameStatus(`Server Error: ${message.message}`, true);
         }
     };
+
+    function updateGameStatus(message, isError = false) {
+        gameStatus.textContent = message;
+        gameStatus.style.color = isError ? '#e74c3c' : '#27ae60';
+    }
 
 
     startAiGameBtn.addEventListener('click', () => initializeGame('ai'));

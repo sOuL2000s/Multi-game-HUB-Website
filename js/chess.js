@@ -10,9 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let gameMode = null; // 'ai', 'local-pvp', 'online-pvp'
     let board = []; // 8x8 array representing the chessboard
-    let currentPlayer = 'white'; // 'white' or 'black'
-    let selectedPiece = null; // Stores {row, col, piece} of selected piece
+    let currentPlayerColor = 'white'; // 'white' or 'black'
+    let selectedPiece = null; // Stores {row, col, pieceChar, piece} of selected piece
     let gameActive = false;
+    let myPlayerColor = null; // For online PvP, set by server
+    let myUID = null; // My own Firebase UID
+    let players = []; // For online PvP, stores players in the room with their UID and color
 
     const PIECES = {
         'r': { type: 'rook', color: 'black', char: '♜' },
@@ -32,13 +35,29 @@ document.addEventListener('DOMContentLoaded', () => {
     function initializeGame(mode) {
         gameMode = mode;
         gameActive = true;
-        currentPlayer = 'white'; // White always starts
         selectedPiece = null;
         gameStatus.textContent = '';
 
-        setupBoard();
-        renderBoard();
-        updateTurnInfo();
+        if (mode === 'online-pvp') {
+            const user = firebase.auth().currentUser;
+            if (!user) {
+                alert("You must be logged in to play online PvP!");
+                location.reload();
+                return;
+            }
+            myUID = user.uid;
+            // Board and current player will be set by the server
+        } else {
+            myUID = null;
+            myPlayerColor = 'white'; // Human always white locally
+            currentPlayerColor = 'white';
+            setupBoard();
+            renderBoard();
+            updateTurnInfo();
+            if (gameMode === 'ai' && currentPlayerColor !== myPlayerColor) {
+                setTimeout(makeAIMove, 1000);
+            }
+        }
 
         startAiGameBtn.style.display = 'none';
         startLocalPvPBtn.style.display = 'none';
@@ -47,17 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (gameMode === 'online-pvp') {
             chatContainer.style.display = 'block';
-            connectToPvPServer(); // Function from pvp.js
+            connectToPvPServer();
             updateGameStatus('Connecting to online PvP...');
-            // Server will assign color and start game.
         } else {
             chatContainer.style.display = 'none';
-            if (gameMode === 'ai' && currentPlayer !== (myPlayerColor || 'white')) { // Assuming human is always white for AI mode unless online sets it
-                // If human is not white, AI makes first move
-                setTimeout(makeAIMove, 1000);
-            }
         }
-        updateGameStatus(`Game started! ${currentPlayer.toUpperCase()}'s turn.`);
     }
 
     function setupBoard() {
@@ -74,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderBoard() {
-        gameContainer.innerHTML = ''; // Clear previous board
+        gameContainer.innerHTML = '';
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 const cell = document.createElement('div');
@@ -95,10 +108,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         highlightSelectedPiece();
         highlightValidMoves();
+        checkAndHighlightKingInCheck();
     }
 
     function updateTurnInfo() {
-        playerTurnInfo.textContent = `Current Turn: ${currentPlayer.toUpperCase()}`;
+        let infoText = `Current Turn: ${currentPlayerColor.toUpperCase()}`;
+        if (gameMode === 'ai' && currentPlayerColor !== myPlayerColor) infoText += ' (AI)';
+        if (gameMode === 'online-pvp' && currentPlayerColor === myPlayerColor) infoText += ' (You)';
+        else if (gameMode === 'online-pvp' && currentPlayerColor !== myPlayerColor) infoText += ' (Opponent)';
+        playerTurnInfo.textContent = infoText;
     }
 
     function updateGameStatus(message, isError = false) {
@@ -107,15 +125,58 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchTurn() {
-        currentPlayer = (currentPlayer === 'white') ? 'black' : 'white';
+        if (gameMode === 'online-pvp') return; // Server handles turn switching
+
+        currentPlayerColor = (currentPlayerColor === 'white') ? 'black' : 'white';
         selectedPiece = null;
         updateTurnInfo();
-        renderBoard(); // Re-render to clear highlights
+        renderBoard();
 
-        if (gameMode === 'ai' && currentPlayer !== (myPlayerColor || 'white')) { // AI's turn (if it's not the human player's color)
+        if (gameActive && gameMode === 'ai' && currentPlayerColor !== myPlayerColor) {
             setTimeout(makeAIMove, 1500);
         }
     }
+
+    // --- Online PvP Integration ---
+    window.handleChessServerMessage = function(message) {
+        const currentUser = firebase.auth().currentUser;
+        if (!currentUser) {
+            console.warn("Received server message but not logged in.");
+            return;
+        }
+        myUID = currentUser.uid;
+
+        if (message.type === 'player_assigned') {
+            myPlayerColor = message.color;
+            updateGameStatus(`Connected! You are ${myPlayerColor.toUpperCase()}. Waiting for opponent...`);
+            updateTurnInfo();
+        } else if (message.type === 'game_start' || message.type === 'game_state_update') {
+            board = message.gameState.board;
+            currentPlayerColor = message.gameState.currentPlayerColor;
+            gameActive = message.gameState.gameActive;
+            players = message.gameState.players; // Store player info for context
+
+            // Determine myPlayerColor from server's player list
+            const myPlayer = players.find(p => p.uid === myUID);
+            if (myPlayer) myPlayerColor = myPlayer.color;
+
+            renderBoard();
+            updateTurnInfo();
+
+            if (gameActive) {
+                if (currentPlayerColor === myPlayerColor) {
+                    updateGameStatus("It's your turn!");
+                } else {
+                    updateGameStatus(`It's ${currentPlayerColor.toUpperCase()}'s turn. Waiting for opponent...`);
+                }
+            } else {
+                updateGameStatus(message.gameState.finalMessage || "Game Over!");
+                resetGameBtn.textContent = "Play Again";
+            }
+        } else if (message.type === 'error') {
+            updateGameStatus(`Server Error: ${message.message}`, true);
+        }
+    };
 
     // --- Movement Logic ---
     function handleCellClick(event) {
@@ -126,37 +187,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const clickedPieceChar = board[row][col];
         const clickedPiece = clickedPieceChar ? PIECES[clickedPieceChar] : null;
 
-        if (gameMode === 'ai' && currentPlayer !== (myPlayerColor || 'white')) {
+        if (gameMode === 'ai' && currentPlayerColor !== myPlayerColor) {
             updateGameStatus("It's AI's turn, please wait.", true);
             return;
         }
+        if (gameMode === 'online-pvp' && currentPlayerColor !== myPlayerColor) {
+            updateGameStatus("It's not your turn!", true);
+            return;
+        }
 
-        // If a piece is already selected
         if (selectedPiece) {
             const validMoves = getValidMoves(selectedPiece.pieceChar, selectedPiece.row, selectedPiece.col);
             const moveTarget = validMoves.find(move => move.row === row && move.col === col);
 
             if (moveTarget) {
-                // Valid move to empty square or capture
                 makeMove(selectedPiece.row, selectedPiece.col, row, col);
                 selectedPiece = null;
-                switchTurn();
-            } else if (clickedPiece && clickedPiece.color === currentPlayer) {
-                // Clicked on own piece again or another of own pieces
+            } else if (clickedPiece && clickedPiece.color === currentPlayerColor) {
                 selectedPiece = { row, col, pieceChar: clickedPieceChar, piece: clickedPiece };
-                renderBoard(); // Re-render to update highlights
+                renderBoard();
             } else {
-                // Invalid move or clicked on opponent's piece (not a valid move target)
-                selectedPiece = null; // Deselect
-                renderBoard(); // Re-render to clear highlights
+                selectedPiece = null;
+                renderBoard();
                 updateGameStatus("Invalid move. Try again.", true);
             }
         } else {
-            // No piece selected yet, try to select one
-            if (clickedPiece && clickedPiece.color === currentPlayer) {
+            if (clickedPiece && clickedPiece.color === currentPlayerColor) {
                 selectedPiece = { row, col, pieceChar: clickedPieceChar, piece: clickedPiece };
-                renderBoard(); // Re-render to highlight selected piece and its moves
-                updateGameStatus(`Selected ${currentPlayer} ${clickedPiece.type}.`);
+                renderBoard();
+                updateGameStatus(`Selected ${currentPlayerColor} ${clickedPiece.type}.`);
+            } else if (clickedPiece && clickedPiece.color !== currentPlayerColor) {
+                updateGameStatus("That's not your piece!", true);
             } else {
                 updateGameStatus("Select your piece first.", true);
             }
@@ -164,53 +225,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function makeMove(fromR, fromC, toR, toC) {
+        const movingPieceChar = board[fromR][fromC];
+        const capturedPieceChar = board[toR][toC];
+
         if (gameMode === 'online-pvp') {
-            // Send move to server
             sendGameAction('chess_move', {
                 from: { r: fromR, c: fromC },
                 to: { r: toR, c: toC },
-                piece: board[fromR][fromC],
-                player: currentPlayer
+                piece: movingPieceChar, // Send the piece that is moving
+                capturedPiece: capturedPieceChar // Send if a piece was captured
             });
             updateGameStatus("Move sent, waiting for server confirmation...");
-            // Local board update will happen when server sends game_state_update
+            gameActive = false; // Disable client interaction until server response
             return;
         }
 
-        const pieceChar = board[fromR][fromC];
-        board[toR][toC] = pieceChar;
+        board[toR][toC] = movingPieceChar;
         board[fromR][fromC] = '';
-        renderBoard(); // Update the visual board
-        updateGameStatus(`${currentPlayer.toUpperCase()} moved ${PIECES[pieceChar].type}.`);
-        // Check for win conditions (e.g., King capture - simplified, not real chess checkmate)
-        if (PIECES[board[toR][toC]]?.type === 'king' && PIECES[board[toR][toC]]?.color !== currentPlayer) {
-            updateGameStatus(`${currentPlayer.toUpperCase()} wins! King captured!`, false);
+
+        updateGameStatus(`${currentPlayerColor.toUpperCase()} moved ${PIECES[movingPieceChar].type}.`);
+
+        // Basic Win Condition: King Capture (simplified, not true checkmate)
+        if (capturedPieceChar && PIECES[capturedPieceChar].type === 'king') {
+            updateGameStatus(`${currentPlayerColor.toUpperCase()} wins! King captured!`, false);
             gameActive = false;
+        } else {
+            switchTurn();
         }
     }
-
-    // This function will be called by pvp.js when a message comes from the server
-    window.handleChessServerMessage = function(message) {
-        // Assume message.gameState contains the full board state and current turn
-        // Example: message = { type: 'game_state_update', gameState: { board: [...], currentPlayer: 'black' } }
-        if (message.type === 'game_state_update' && gameMode === 'online-pvp') {
-            board = message.gameState.board;
-            currentPlayer = message.gameState.currentPlayer;
-            renderBoard();
-            updateTurnInfo();
-            // Assuming myPlayerColor is set by the server in pvp.js
-            if (currentPlayer === myPlayerColor) {
-                updateGameStatus("It's your turn!");
-            } else {
-                updateGameStatus(`It's ${currentPlayer.toUpperCase()}'s turn.`);
-            }
-        } else if (message.type === 'player_assigned') {
-            myPlayerColor = message.color; // Set the player's color for online mode
-            playerTurnInfo.textContent = `You are playing as ${myPlayerColor.toUpperCase()}`;
-        }
-        // ... handle other message types (chat, opponent_left, etc.)
-    };
-
 
     function highlightSelectedPiece() {
         if (selectedPiece) {
@@ -229,68 +271,109 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Piece Specific Movement Rules (Simplified) ---
-    function getValidMoves(pieceChar, r, c) {
+    function checkAndHighlightKingInCheck() {
+        let kingPosition = null;
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const pieceChar = board[r][c];
+                if (pieceChar && PIECES[pieceChar].type === 'king' && PIECES[pieceChar].color === currentPlayerColor) {
+                    kingPosition = { r, c };
+                    break;
+                }
+            }
+            if (kingPosition) break;
+        }
+
+        if (kingPosition && isKingInCheck(kingPosition.r, kingPosition.c, currentPlayerColor)) {
+            const kingCell = gameContainer.querySelector(`[data-row="${kingPosition.r}"][data-col="${kingPosition.c}"]`);
+            if (kingCell) {
+                kingCell.classList.add('king-in-check');
+                updateGameStatus(`${currentPlayerColor.toUpperCase()} King is in check!`, true);
+            }
+        }
+    }
+
+    // --- Piece Specific Movement Rules ---
+    function getValidMoves(pieceChar, r, c, currentBoard = board) {
         const piece = PIECES[pieceChar];
         if (!piece) return [];
         const moves = [];
         const opponentColor = (piece.color === 'white') ? 'black' : 'white';
 
-        const checkPath = (dr, dc) => { // For Rook, Bishop, Queen
+        const wouldMoveBeLegal = (testFromR, testFromC, testToR, testToC) => {
+            const tempBoard = JSON.parse(JSON.stringify(currentBoard));
+            const tempPieceChar = tempBoard[testFromR][testFromC];
+            tempBoard[testToR][testToC] = tempPieceChar;
+            tempBoard[testFromR][testFromC] = '';
+
+            let kingR, kingC;
+            outer:
+            for (let kr = 0; kr < 8; kr++) {
+                for (let kc = 0; kc < 8; kc++) {
+                    const kChar = tempBoard[kr][kc];
+                    if (kChar && PIECES[kChar].type === 'king' && PIECES[kChar].color === piece.color) {
+                        kingR = kr;
+                        kingC = kc;
+                        break outer;
+                    }
+                }
+            }
+            return !isKingInCheck(kingR, kingC, piece.color, tempBoard);
+        };
+
+        const checkPath = (dr, dc) => {
             for (let i = 1; i < 8; i++) {
                 const newR = r + i * dr;
                 const newC = c + i * dc;
                 if (!isValidCell(newR, newC)) break;
-                const targetPieceChar = board[newR][newC];
+                const targetPieceChar = currentBoard[newR][newC];
                 const targetPiece = targetPieceChar ? PIECES[targetPieceChar] : null;
 
-                if (!targetPiece) { // Empty cell
-                    moves.push({ row: newR, col: newC });
-                } else { // Occupied cell
-                    if (targetPiece.color === opponentColor) { // Capture
-                        moves.push({ row: newR, col: newC });
+                if (!targetPiece) {
+                    if (wouldMoveBeLegal(r, c, newR, newC)) moves.push({ row: newR, col: newC });
+                } else {
+                    if (targetPiece.color === opponentColor) {
+                        if (wouldMoveBeLegal(r, c, newR, newC)) moves.push({ row: newR, col: newC });
                     }
-                    break; // Path blocked
+                    break;
                 }
             }
         };
 
-        const checkSingleMove = (newR, newC) => { // For King, Knight, Pawn captures
+        const checkSingleMove = (newR, newC) => {
             if (!isValidCell(newR, newC)) return;
-            const targetPieceChar = board[newR][newC];
+            const targetPieceChar = currentBoard[newR][newC];
             const targetPiece = targetPieceChar ? PIECES[targetPieceChar] : null;
 
             if (!targetPiece || targetPiece.color === opponentColor) {
-                moves.push({ row: newR, col: newC });
+                if (wouldMoveBeLegal(r, c, newR, newC)) moves.push({ row: newR, col: newC });
             }
         };
 
         switch (piece.type) {
             case 'pawn':
-                const direction = (piece.color === 'white') ? -1 : 1; // White moves up (-1 row), Black moves down (+1 row)
+                const direction = (piece.color === 'white') ? -1 : 1;
                 const startRow = (piece.color === 'white') ? 6 : 1;
 
-                // Forward 1
-                if (isValidCell(r + direction, c) && !board[r + direction][c]) {
-                    moves.push({ row: r + direction, col: c });
+                if (isValidCell(r + direction, c) && !currentBoard[r + direction][c]) {
+                    checkSingleMove(r + direction, c);
                 }
-                // Forward 2 (initial move)
-                if (r === startRow && isValidCell(r + 2 * direction, c) && !board[r + 2 * direction][c] && !board[r + direction][c]) {
-                    moves.push({ row: r + 2 * direction, col: c });
+                if (r === startRow && isValidCell(r + 2 * direction, c) && !currentBoard[r + 2 * direction][c] && !currentBoard[r + direction][c]) {
+                    checkSingleMove(r + 2 * direction, c);
                 }
-                // Captures
                 if (isValidCell(r + direction, c - 1)) {
-                    const capturePieceChar = board[r + direction][c - 1];
+                    const capturePieceChar = currentBoard[r + direction][c - 1];
                     const capturePiece = capturePieceChar ? PIECES[capturePieceChar] : null;
                     if (capturePiece && capturePiece.color === opponentColor) {
-                        moves.push({ row: r + direction, col: c - 1 });
+                        checkSingleMove(r + direction, c - 1);
                     }
                 }
                 if (isValidCell(r + direction, c + 1)) {
-                    const capturePieceChar = board[r + direction][c + 1];
+                    const capturePieceChar = currentBoard[r + direction][c + 1];
                     const capturePiece = capturePieceChar ? PIECES[capturePieceChar] : null;
                     if (capturePiece && capturePiece.color === opponentColor) {
-                        moves.push({ row: r + direction, col: c + 1 });
+                        checkSingleMove(r + direction, c + 1);
                     }
                 }
                 break;
@@ -305,8 +388,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 checkPath(1, 1); checkPath(1, -1); checkPath(-1, 1); checkPath(-1, -1);
                 break;
             case 'queen':
-                checkPath(1, 0); checkPath(-1, 0); checkPath(0, 1); checkPath(0, -1); // Rook moves
-                checkPath(1, 1); checkPath(1, -1); checkPath(-1, 1); checkPath(-1, -1); // Bishop moves
+                checkPath(1, 0); checkPath(-1, 0); checkPath(0, 1); checkPath(0, -1);
+                checkPath(1, 1); checkPath(1, -1); checkPath(-1, 1); checkPath(-1, -1);
                 break;
             case 'king':
                 const kingMoves = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
@@ -320,36 +403,159 @@ document.addEventListener('DOMContentLoaded', () => {
         return r >= 0 && r < 8 && c >= 0 && c < 8;
     }
 
-    // --- AI Logic (Dummy for Chess) ---
+    function isKingInCheck(kR, kC, kingColor, currentBoard = board) {
+        const opponentColor = (kingColor === 'white') ? 'black' : 'white';
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const pieceChar = currentBoard[r][c];
+                if (pieceChar) {
+                    const piece = PIECES[pieceChar];
+                    if (piece.color === opponentColor) {
+                        const opponentMoves = getPseudoLegalMoves(pieceChar, r, c, currentBoard);
+                        if (opponentMoves.some(move => move.row === kR && move.col === kC)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    function getPseudoLegalMoves(pieceChar, r, c, currentBoard) {
+        const piece = PIECES[pieceChar];
+        if (!piece) return [];
+        const pseudoMoves = [];
+        const opponentColor = (piece.color === 'white') ? 'black' : 'white';
+
+        const checkPath = (dr, dc) => {
+            for (let i = 1; i < 8; i++) {
+                const newR = r + i * dr;
+                const newC = c + i * dc;
+                if (!isValidCell(newR, newC)) break;
+                const targetPieceChar = currentBoard[newR][newC];
+                const targetPiece = targetPieceChar ? PIECES[targetPieceChar] : null;
+
+                if (!targetPiece) {
+                    pseudoMoves.push({ row: newR, col: newC });
+                } else {
+                    if (targetPiece.color === opponentColor) {
+                        pseudoMoves.push({ row: newR, col: newC });
+                    }
+                    break;
+                }
+            }
+        };
+
+        const checkSingleMove = (newR, newC) => {
+            if (!isValidCell(newR, newC)) return;
+            const targetPieceChar = currentBoard[newR][newC];
+            const targetPiece = targetPieceChar ? PIECES[targetPieceChar] : null;
+
+            if (!targetPiece || targetPiece.color === opponentColor) {
+                pseudoMoves.push({ row: newR, col: newC });
+            }
+        };
+
+        switch (piece.type) {
+            case 'pawn':
+                const direction = (piece.color === 'white') ? -1 : 1;
+                const startRow = (piece.color === 'white') ? 6 : 1;
+
+                if (isValidCell(r + direction, c) && !currentBoard[r + direction][c]) {
+                    pseudoMoves.push({ row: r + direction, col: c });
+                }
+                if (r === startRow && isValidCell(r + 2 * direction, c) && !currentBoard[r + 2 * direction][c] && !currentBoard[r + direction][c]) {
+                    pseudoMoves.push({ row: r + 2 * direction, col: c });
+                }
+                if (isValidCell(r + direction, c - 1)) {
+                    const capturePieceChar = currentBoard[r + direction][c - 1];
+                    const capturePiece = capturePieceChar ? PIECES[capturePieceChar] : null;
+                    if (capturePiece && capturePiece.color === opponentColor) {
+                        pseudoMoves.push({ row: r + direction, col: c - 1 });
+                    }
+                }
+                if (isValidCell(r + direction, c + 1)) {
+                    const capturePieceChar = currentBoard[r + direction][c + 1];
+                    const capturePiece = capturePieceChar ? PIECES[capturePieceChar] : null;
+                    if (capturePiece && capturePiece.color === opponentColor) {
+                        pseudoMoves.push({ row: r + direction, col: c + 1 });
+                    }
+                }
+                break;
+            case 'rook':
+                checkPath(1, 0); checkPath(-1, 0); checkPath(0, 1); checkPath(0, -1);
+                break;
+            case 'knight':
+                const knightMoves = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+                knightMoves.forEach(([dr, dc]) => checkSingleMove(r + dr, c + dc));
+                break;
+            case 'bishop':
+                checkPath(1, 1); checkPath(1, -1); checkPath(-1, 1); checkPath(-1, -1);
+                break;
+            case 'queen':
+                checkPath(1, 0); checkPath(-1, 0); checkPath(0, 1); checkPath(0, -1);
+                checkPath(1, 1); checkPath(1, -1); checkPath(-1, 1); checkPath(-1, -1);
+                break;
+            case 'king':
+                const kingMoves = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+                kingMoves.forEach(([dr, dc]) => checkSingleMove(r + dr, c + dc));
+                break;
+        }
+        return pseudoMoves;
+    }
+
+
+    // --- AI Logic (Basic for Chess) ---
     function makeAIMove() {
-        const aiPlayerColor = currentPlayer; // AI acts as the current player
+        if (gameMode === 'online-pvp') return; // Online AI is not handled client-side
+
+        const aiPlayerColor = currentPlayerColor;
         updateGameStatus(`${aiPlayerColor.toUpperCase()} (AI) is thinking...`);
 
-        const allPossibleAIMoves = [];
+        const allValidAIMoves = [];
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 const pieceChar = board[r][c];
                 if (pieceChar && PIECES[pieceChar].color === aiPlayerColor) {
                     const movesForPiece = getValidMoves(pieceChar, r, c);
                     movesForPiece.forEach(move => {
-                        allPossibleAIMoves.push({ fromR: r, fromC: c, toR: move.row, toC: move.col, piece: pieceChar });
+                        allValidAIMoves.push({ fromR: r, fromC: c, toR: move.row, toC: move.col, piece: pieceChar });
                     });
                 }
             }
         }
 
-        if (allPossibleAIMoves.length > 0) {
-            // Simple AI: pick a random valid move
-            const randomMove = allPossibleAIMoves[Math.floor(Math.random() * allPossibleAIMoves.length)];
+        if (allValidAIMoves.length > 0) {
+            let chosenMove = null;
+            const captureMoves = allValidAIMoves.filter(move => {
+                const targetPieceChar = board[move.toR][move.toC];
+                return targetPieceChar && PIECES[targetPieceChar].color !== aiPlayerColor;
+            });
+
+            if (captureMoves.length > 0) {
+                chosenMove = captureMoves[Math.floor(Math.random() * captureMoves.length)];
+            } else {
+                chosenMove = allValidAIMoves[Math.floor(Math.random() * allValidAIMoves.length)];
+            }
+
             setTimeout(() => {
-                board[randomMove.toR][randomMove.toC] = randomMove.piece;
-                board[randomMove.fromR][randomMove.fromC] = '';
-                updateGameStatus(`${aiPlayerColor.toUpperCase()} (AI) moved ${PIECES[randomMove.piece].type}.`);
-                switchTurn(); // AI's turn ends
+                const capturedPiece = board[chosenMove.toR][chosenMove.toC];
+                board[chosenMove.toR][chosenMove.toC] = chosenMove.piece;
+                board[chosenMove.fromR][chosenMove.fromC] = '';
+                updateGameStatus(`${aiPlayerColor.toUpperCase()} (AI) moved ${PIECES[chosenMove.piece].type}.`);
+
+                if (capturedPiece && PIECES[capturedPiece].type === 'king') {
+                    updateGameStatus(`${aiPlayerColor.toUpperCase()} (AI) wins! King captured!`, false);
+                    gameActive = false;
+                } else {
+                    switchTurn();
+                }
             }, 1000);
         } else {
-            updateGameStatus(`${aiPlayerColor.toUpperCase()} (AI) has no valid moves. Stalemate or checkmate (not implemented)!`, true);
-            gameActive = false; // Or declare stalemate
+            updateGameStatus(`${aiPlayerColor.toUpperCase()} (AI) has no valid moves. Game Over.`, true);
+            gameActive = false;
         }
     }
 
@@ -360,14 +566,13 @@ document.addEventListener('DOMContentLoaded', () => {
     startOnlinePvPBtn.addEventListener('click', () => {
         updateGameStatus('Attempting to connect for Online PvP...');
         initializeGame('online-pvp');
-        // The server will assign player color and initiate the game state
     });
     resetGameBtn.addEventListener('click', () => {
-        location.reload(); // Simple way to reset game
+        location.reload();
     });
 
     // Initial state: show game mode buttons
     resetGameBtn.style.display = 'none';
-    playerTurnInfo.style.display = 'block'; // Make sure info is visible
+    playerTurnInfo.style.display = 'block';
     updateGameStatus('Choose a game mode to start!');
 });
