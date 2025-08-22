@@ -31,16 +31,25 @@
 }
 
 /* Specific cell colors for bases and paths */
-.red-base { background-color: #ffcccc; }
-.green-base { background-color: #ccffcc; }
-.blue-base { background-color: #cceeff; }
-.yellow-base { background-color: #ffffcc; }
+/* Adjust base colors to be lighter, and make the actual base 'houses' clearer */
+.red-base { background-color: #ffdddd; }
+.red-base.house { background-color: #ffcccc; border: 2px solid red; }
+
+.green-base { background-color: #ddffdd; }
+.green-base.house { background-color: #ccffcc; border: 2px solid green; }
+
+.blue-base { background-color: #ddeeff; }
+.blue-base.house { background-color: #cceeff; border: 2px solid blue; }
+
+.yellow-base { background-color: #ffffdd; }
+.yellow-base.house { background-color: #ffffcc; border: 2px solid orange; } /* Using orange for yellow tokens */
+
 
 /* Start points for each color */
-.red-start { background-color: #ff6666; }
-.green-start { background-color: #66cc66; }
-.blue-start { background-color: #66b2ff; }
-.yellow-start { background-color: #ffe666; }
+.red-start { background-color: #ff6666; border: 2px solid red; }
+.green-start { background-color: #66cc66; border: 2px solid green; }
+.blue-start { background-color: #66b2ff; border: 2px solid blue; }
+.yellow-start { background-color: #ffe666; border: 2px solid orange; }
 
 /* Home columns/rows for each color */
 .red-home-path { background-color: #ff9999; }
@@ -50,9 +59,14 @@
 
 /* Center home square */
 .center-home { background-color: #eee; border: 2px solid #333; }
+.center-home.red-center { background-color: red; }
+.center-home.green-center { background-color: green; }
+.center-home.blue-center { background-color: blue; }
+.center-home.yellow-center { background-color: orange; }
+
 
 /* Safe cells (stars in real Ludo) - just different color here */
-.safe-cell { background-color: #a0a0a0; }
+.safe-cell { background-color: #d0d0d0; border: 1px solid #a0a0a0;}
 
 
 /* Token Styling */
@@ -71,16 +85,19 @@
     cursor: pointer;
     transition: transform 0.2s ease-out, background-color 0.2s ease-out; /* Smooth movement */
     z-index: 10; /* Ensure tokens are above cells */
+    left: 0; /* Important for transform to work relative to game-container */
+    top: 0;  /* Important for transform to work relative to game-container */
 }
 
 .ludo-token.red { background-color: red; }
 .ludo-token.green { background-color: green; }
 .ludo-token.blue { background-color: blue; }
-.ludo-token.yellow { background-color: orange; }
+.ludo-token.yellow { background-color: orange; } /* Yellow tokens use orange color */
 
 .ludo-token.movable {
     box-shadow: 0 0 0 4px #00f, 0 0 10px #00f; /* Glow effect */
     transform: scale(1.1);
+    z-index: 11; /* Bring movable token to front */
 }
 
 /* Dice Styling */

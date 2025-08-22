@@ -1,0 +1,82 @@
+/* Uno Specific Styles */
+#uno-game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+#uno-play-area {
+    border: 2px solid #333;
+    padding: 20px;
+    background-color: #2e7d32; /* Green felt color */
+    border-radius: 10px;
+    min-width: 600px;
+    min-height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.uno-card-stack, .uno-discard-pile {
+    width: 100px;
+    height: 150px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #ccc;
+    font-weight: bold;
+    font-size: 1.1em;
+    background-color: rgba(0,0,0,0.1);
+}
+
+.uno-card {
+    width: 90px;
+    height: 140px;
+    border-radius: 8px;
+    border: 1px solid #555;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 2em;
+    font-weight: bold;
+    color: white;
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.1s ease-in-out;
+}
+
+.uno-card:hover:not(.disabled) {
+    transform: translateY(-5px) scale(1.05);
+}
+
+/* Card Colors */
+.uno-card.red { background-color: #e74c3c; }
+.uno-card.green { background-color: #27ae60; }
+.uno-card.blue { background-color: #3498db; }
+.uno-card.yellow { background-color: #f1c40f; }
+.uno-card.wild { background-color: #34495e; } /* Black/dark grey for wild cards */
+
+#player-hand {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+    border: 1px solid #ddd;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+#uno-status {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 15px;
+}

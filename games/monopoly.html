@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monopoly - AI & PvP</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/monopoly.css">
+</head>
+<body>
+    <header>
+        <h1>Monopoly</h1>
+        <nav>
+            <a href="../index.html">Back to Games</a>
+        </nav>
+    </header>
+
+    <main class="game-page">
+        <div id="game-controls">
+            <button id="start-ai-game">Play vs AI</button>
+            <button id="start-local-pvp">Local PvP</button>
+            <button id="start-online-pvp">Online PvP (Requires Server)</button>
+            <button id="reset-game" style="display: none;">Reset Game</button>
+        </div>
+
+        <div id="player-turn-info"></div>
+        <div id="game-status"></div>
+
+        <div id="monopoly-game-area" style="text-align: center; padding: 50px; font-size: 1.5em;">
+            <p>Monopoly is a complex game to implement. It's coming soon!</p>
+            <img src="../assets/images/monopoly/monopoly_icon.png" alt="Monopoly Icon" style="max-width: 150px; margin-top: 20px;">
+        </div>
+
+        <!-- Online PvP Chat (optional) -->
+        <div id="chat-container" style="display: none;">
+            <h3>Chat</h3>
+            <div id="chat-messages"></div>
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button id="send-chat">Send</button>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 AI & PvP Game Hub.</p>
+    </footer>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/pvp.js"></script>
+    <script src="../js/monopoly.js"></script>
+</body>
+</html>

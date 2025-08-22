@@ -1,71 +1,87 @@
 // This is conceptual. You'd need a server to run a WebSocket server.
-let socket = null;
-let myPlayerColor = null; // Assigned by the server (e.g., 'red', 'blue')
+// For real online multiplayer, you MUST have a backend server
+// that manages game state, player connections, and message routing.
 
-// Function called by ludo.js (and would be by other game's JS files)
+let socket = null;
+let myPlayerColor = null; // Assigned by the server (e.g., 'red', 'blue', 'white', 'black')
+let currentGame = null;   // To keep track of which game we are currently playing ('ludo', 'chess', 'uno', 'monopoly')
+
+// Function called by game-specific JS files (e.g., ludo.js, chess.js)
 function connectToPvPServer() {
     // IMPORTANT: Replace with your actual WebSocket server URL
-    // For local testing, you might use 'ws://localhost:8080'
-    const wsUrl = 'ws://your-game-server.com:8080';
+    // For local testing, you might use 'ws://localhost:8080' or 'ws://127.0.0.1:8080'
+    // For a deployed server, use 'wss://your-game-server.com/ws' (secure WebSocket)
+    const wsUrl = 'ws://localhost:8080'; // Placeholder - CHANGE THIS FOR PRODUCTION!
 
     if (socket && socket.readyState === WebSocket.OPEN) {
         console.log("Already connected to WebSocket.");
+        // If already connected, just ensure we send a join_game for the current game
+        if (currentGame) sendGameAction('join_game', { game: currentGame });
         return;
     }
+
+    // Determine current game from URL
+    const pathSegments = window.location.pathname.split('/');
+    currentGame = pathSegments[pathSegments.length - 1].replace('.html', '');
 
     try {
         socket = new WebSocket(wsUrl);
 
         socket.onopen = (event) => {
             console.log('Connected to WebSocket server:', event);
-            // Example: Send a message to join a Ludo game
-            sendGameAction('join_game', { game: 'ludo' });
+            // Send a message to join the specific game
+            if (currentGame) {
+                sendGameAction('join_game', { game: currentGame });
+            }
         };
 
         socket.onmessage = (event) => {
             const message = JSON.parse(event.data);
             console.log('Received message:', message);
 
-            // You would dispatch these messages to the relevant game logic (ludo.js, chess.js etc.)
-            // Example: if (message.game === 'ludo') LudoGame.handleServerMessage(message);
-            // For now, let's handle some common ones directly here or mock.
+            // Forward game-specific messages to the relevant game logic
+            if (message.game === 'ludo' && typeof window.handleLudoServerMessage === 'function') {
+                window.handleLudoServerMessage(message);
+            } else if (message.game === 'chess' && typeof window.handleChessServerMessage === 'function') {
+                window.handleChessServerMessage(message);
+            } else if (message.game === 'uno' && typeof window.handleUnoServerMessage === 'function') {
+                window.handleUnoServerMessage(message);
+            } else if (message.game === 'monopoly' && typeof window.handleMonopolyServerMessage === 'function') {
+                window.handleMonopolyServerMessage(message);
+            } else { // Handle common messages like chat, player assignment for all games
+                const gameStatusDiv = document.getElementById('game-status');
+                const chatMessagesDiv = document.getElementById('chat-messages');
 
-            if (document.getElementById('game-status')) { // Check if on a game page
                 switch (message.type) {
                     case 'player_assigned':
                         myPlayerColor = message.color;
-                        document.getElementById('game-status').textContent = `Connected! You are ${myPlayerColor.toUpperCase()}. Waiting for opponent...`;
-                        // In a real game, you'd then update UI to show it's your turn etc.
+                        if (gameStatusDiv) gameStatusDiv.textContent = `Connected! You are ${myPlayerColor.toUpperCase()}. Waiting for opponent...`;
                         break;
                     case 'game_start':
-                        document.getElementById('game-status').textContent = `Game started! ${message.startingPlayer.toUpperCase()} goes first!`;
-                        // This would trigger the actual game initialization/state update based on server data
-                        // For Ludo: LudoGame.initializeOnlineGame(message.initialState);
-                        break;
-                    case 'game_state_update':
-                        // This is the most crucial part for PvP.
-                        // The server sends the new game state after a move.
-                        // You need to update your local game board/pieces/dice based on message.gameState
-                        // Example: LudoGame.updateGameState(message.gameState);
-                        document.getElementById('game-status').textContent = `Game state updated. It's ${message.currentTurn.toUpperCase()}'s turn.`;
-                        // If it's your turn, enable your controls.
+                        if (gameStatusDiv) gameStatusDiv.textContent = `Game started! ${message.startingPlayer.toUpperCase()} goes first!`;
+                        // A game-specific handler will then update its board based on initial state.
                         break;
                     case 'chat_message':
-                        const chatMessagesDiv = document.getElementById('chat-messages');
                         if (chatMessagesDiv) {
                             chatMessagesDiv.innerHTML += `<div><strong>${message.sender}:</strong> ${message.text}</div>`;
                             chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Scroll to bottom
                         }
                         break;
                     case 'error':
-                        document.getElementById('game-status').textContent = `Server Error: ${message.message}`;
-                        document.getElementById('game-status').style.color = 'red';
+                        if (gameStatusDiv) {
+                            gameStatusDiv.textContent = `Server Error: ${message.message}`;
+                            gameStatusDiv.style.color = 'red';
+                        }
                         break;
                     case 'opponent_left':
-                        document.getElementById('game-status').textContent = 'Your opponent disconnected!';
-                        document.getElementById('game-status').style.color = 'orange';
+                        if (gameStatusDiv) {
+                            gameStatusDiv.textContent = 'Your opponent disconnected!';
+                            gameStatusDiv.style.color = 'orange';
+                        }
                         // Disable game controls, offer rematch etc.
                         break;
+                    default:
+                        console.log('Unhandled message type:', message.type);
                 }
             }
         };
@@ -100,7 +116,7 @@ function sendGameAction(actionType, payload) {
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
             type: actionType,
-            game: 'ludo', // This would be dynamic based on the current game
+            game: currentGame, // The game this action pertains to
             playerColor: myPlayerColor, // Send your assigned color
             payload: payload
         }));
@@ -113,7 +129,7 @@ function sendGameAction(actionType, payload) {
     }
 }
 
-// Event listener for chat sending (example)
+// Event listener for chat sending
 document.addEventListener('DOMContentLoaded', () => {
     const sendChatBtn = document.getElementById('send-chat');
     const chatInput = document.getElementById('chat-input');
@@ -122,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sendChatBtn.addEventListener('click', () => {
             const messageText = chatInput.value.trim();
             if (messageText) {
-                sendGameAction('chat_message', { text: messageText });
+                sendGameAction('chat_message', { text: messageText, sender: myPlayerColor || 'Guest' });
                 chatInput.value = '';
             }
         });
@@ -136,9 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// To actually integrate with a game, you'd modify game logic
-// to call `sendGameAction` when a player makes a move,
-// and to react to `game_state_update` messages from the server.
-// Example: In ludo.js, instead of `executeMove(selectedMove);`, you might call
-// `sendGameAction('make_move', { tokenId: selectedMove.token.id, newPos: selectedMove.newPathIdx });`
-// And `ludo.js` would have a function like `handleServerUpdate(gameState)` that renders the board.
+// Note: Each game's JavaScript (e.g., ludo.js, chess.js) must
+// define a global function like `window.handleLudoServerMessage(message)`
+// for pvp.js to dispatch server messages to it.
