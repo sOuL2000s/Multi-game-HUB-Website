@@ -3,380 +3,621 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer Multi Game Hub</title>
+    <title>Celestial Nexus of Games</title>
+    <!-- Google Fonts for mystic flair -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        /* Global Styles */
+        /* Global Styles - Celestial Nexus Theme */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Roboto', sans-serif;
             margin: 0;
             padding: 0;
-            background: linear-gradient(135deg, #1a2a3a, #0a1a2a);
-            color: #eee;
+            background: linear-gradient(135deg, #0a0e1a, #1b2038); /* Deeper cosmic gradient */
+            color: #e0e0e0; /* Lighter text for contrast */
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            overflow-x: hidden; /* Prevent horizontal scroll on small screens */
+            overflow-x: hidden;
+            letter-spacing: 0.5px;
         }
         .container {
             width: 90%;
             max-width: 1200px;
-            background-color: #2b3b4b;
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            margin: 20px 0;
-            padding: 20px;
+            background-color: rgba(27, 32, 56, 0.9); /* Slightly transparent dark purple-blue */
+            backdrop-filter: blur(5px); /* Ethereal blur effect */
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(139, 92, 246, 0.4), 0 0 15px rgba(0, 0, 0, 0.6); /* Glowing purple shadow */
+            margin: 30px 0;
+            padding: clamp(20px, 4vw, 30px); /* Responsive padding */
             text-align: center;
             overflow: hidden;
+            border: 1px solid #4f3a7f; /* Subtle border */
         }
         h1, h2, h3 {
-            color: #4CAF50;
-            margin-bottom: 20px;
+            font-family: 'Cinzel Decorative', cursive; /* Mystic font for headings */
+            color: #6EE7B7; /* Ethereal green accent */
+            text-shadow: 0 0 10px rgba(110, 231, 183, 0.7); /* Soft glow */
+            margin-bottom: 25px;
+            letter-spacing: 1.5px;
         }
+        h1 { font-size: 3em; }
+        h2 { font-size: 2.2em; }
+        h3 { font-size: 1.6em; }
+
         button {
-            background-color: #4CAF50;
+            background: linear-gradient(145deg, #8B5CF6, #A78BFA); /* Purple gradient */
             color: white;
-            padding: 12px 25px;
+            padding: 14px 30px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 1.1em;
+            font-weight: 700;
             margin: 10px;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4), 0 0 15px rgba(167, 139, 250, 0.5); /* Deep shadow with glow */
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         button:hover {
-            background-color: #45a049;
-            transform: translateY(-2px);
+            background: linear-gradient(145deg, #A78BFA, #8B5CF6); /* Inverted gradient on hover */
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(167, 139, 250, 0.8);
         }
         button:active {
             transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3), 0 0 10px rgba(167, 139, 250, 0.3);
         }
+        button:disabled {
+            background: #444;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.7;
+        }
+
         .section {
-            display: none; /* All game sections are hidden by default */
-            padding: 20px;
-            border-top: 1px solid #4a5a6a;
-            margin-top: 20px;
+            display: none;
+            padding: clamp(20px, 4vw, 25px); /* Responsive padding */
+            border-top: 1px solid #4f3a7f;
+            margin-top: 25px;
             text-align: left;
+            background-color: rgba(35, 40, 64, 0.7); /* Slightly lighter background for sections */
+            border-radius: 15px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
         }
         .section.active {
             display: block;
         }
         .game-options {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             display: flex;
             justify-content: center;
-            gap: 15px;
+            gap: 20px;
             flex-wrap: wrap;
         }
         .game-options button {
-            background-color: #555;
+            background: linear-gradient(145deg, #444, #666);
             font-size: 1em;
-            padding: 10px 20px;
+            padding: 12px 25px;
         }
         .game-options button:hover {
-            background-color: #666;
+            background: linear-gradient(145deg, #666, #444);
         }
         .game-board, .game-area {
-            border: 2px solid #5a6a7a;
-            background-color: #3b4b5b;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
-            min-height: 400px;
+            border: 2px solid #4f3a7f;
+            background-color: rgba(35, 40, 64, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 25px;
+            min-height: 450px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            overflow: auto; /* For game boards that might overflow */
+            overflow: auto;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.3);
         }
         .game-status {
-            margin-top: 15px;
-            font-size: 1.1em;
-            color: #b0e0b0;
-            min-height: 30px;
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #6EE7B7; /* Ethereal green for status */
+            min-height: 35px;
+            text-shadow: 0 0 5px rgba(110, 231, 183, 0.5);
         }
         .player-info {
             display: flex;
             justify-content: space-around;
-            margin-top: 20px;
+            margin-top: 25px;
             flex-wrap: wrap;
         }
         .player-card {
-            background-color: #3a4a5a;
-            border-radius: 8px;
-            padding: 10px 15px;
+            background-color: rgba(43, 48, 76, 0.8);
+            border-radius: 10px;
+            padding: 15px 20px;
             margin: 10px;
-            border: 1px solid #5a6a7a;
-            min-width: 150px;
+            border: 1px solid #4f3a7f;
+            min-width: 180px;
             text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
         }
         .player-card.current-player {
-            border-color: #4CAF50;
-            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+            border-color: #6EE7B7;
+            box-shadow: 0 0 15px rgba(110, 231, 183, 0.7);
+            background-color: rgba(69, 79, 117, 0.9);
         }
-        input[type="text"], input[type="number"] {
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #5a6a7a;
-            background-color: #1a2a3a;
-            color: #eee;
-            margin: 5px;
-            width: 180px;
+        input[type="text"], input[type="number"], select {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #4f3a7f;
+            background-color: #1a1e2b; /* Darker input background */
+            color: #e0e0e0;
+            margin: 8px;
+            width: 200px;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus {
+            border-color: #A78BFA;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.4), 0 0 10px rgba(167, 139, 250, 0.5);
+            outline: none;
+        }
+        .player-setup-entry {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        .player-setup-entry label {
+            min-width: 100px;
+            text-align: right;
+            color: #b0b0d0;
+        }
+        .player-setup-entry input[type="radio"] {
+            width: auto;
+            margin-right: 5px;
         }
 
         /* Home Page specific styles */
         #home-screen h2 {
-            font-size: 2.5em;
+            font-size: 2.8em;
             color: #fff;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
         }
         #home-screen p {
-            font-size: 1.2em;
-            color: #bbb;
-            margin-bottom: 30px;
+            font-size: 1.3em;
+            color: #c0c0e0;
+            margin-bottom: 40px;
+            line-height: 1.6;
         }
         .game-selection-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 25px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 30px;
             margin-top: 40px;
             padding: 0 20px;
         }
         .game-card {
-            background-color: #3b4b5b;
-            border-radius: 12px;
-            padding: 25px;
+            background-color: rgba(35, 40, 64, 0.9);
+            border-radius: 15px;
+            padding: 30px;
             cursor: pointer;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
             text-align: center;
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-            border: 1px solid #5a6a7a;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(167, 139, 250, 0.3);
+            border: 1px solid #4f3a7f;
+            position: relative;
+            overflow: hidden;
+        }
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(167, 139, 250, 0.1) 0%, transparent 70%);
+            transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+            transform: scale(0);
+            opacity: 0;
+            z-index: 0;
+        }
+        .game-card:hover::before {
+            transform: scale(1);
+            opacity: 1;
         }
         .game-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+            transform: translateY(-10px) scale(1.03);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5), 0 0 25px rgba(167, 139, 250, 0.8);
+            background-color: rgba(45, 50, 80, 0.95);
         }
         .game-card h3 {
-            color: #4CAF50;
-            margin-top: 0;
-            font-size: 1.8em;
+            color: #6EE7B7;
+            margin-top: 15px;
+            font-size: 2em;
+            text-shadow: 0 0 8px rgba(110, 231, 183, 0.6);
+            position: relative;
+            z-index: 1;
         }
         .game-card p {
-            color: #ccc;
-            font-size: 0.9em;
-            min-height: 40px; /* Ensure consistent card height */
+            color: #c0c0e0;
+            font-size: 1em;
+            min-height: 50px;
+            position: relative;
+            z-index: 1;
         }
         .game-card .icon {
-            font-size: 3em;
-            margin-bottom: 15px;
-            color: #7ED957; /* A brighter green */
+            font-size: 4em;
+            margin-bottom: 20px;
+            color: #A78BFA; /* Lighter purple for icons */
+            text-shadow: 0 0 15px rgba(167, 139, 250, 0.9); /* Stronger glow */
+            transition: color 0.3s ease, text-shadow 0.3s ease;
+            position: relative;
+            z-index: 1;
         }
-        .game-card.ludo .icon { content: '🎲'; }
-        .game-card.monopoly .icon { content: '💰'; }
-        .game-card.uno .icon { content: '🃏'; }
-        .game-card.chess .icon { content: '♟️'; }
+        .game-card:hover .icon {
+            color: #6EE7B7; /* Green glow on hover */
+            text-shadow: 0 0 20px rgba(110, 231, 183, 1);
+        }
 
+        /* Lobby specific styles */
+        #online-lobby-section {
+            text-align: center;
+        }
+        #lobby-status {
+            font-size: 1.3em;
+            color: #6EE7B7;
+            margin-bottom: 25px;
+            text-shadow: 0 0 5px rgba(110, 231, 183, 0.5);
+        }
+        #player-name-input-group {
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        #player-name-input-group label {
+            color: #c0c0e0;
+            font-size: 1.1em;
+        }
+        #lobby-controls {
+            margin-bottom: 35px;
+            display: flex;
+            flex-direction: column; /* Stack controls for better layout */
+            align-items: center;
+            gap: 20px;
+        }
+        #create-game-form {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            background-color: rgba(43, 48, 76, 0.8);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        #create-game-form label {
+            color: #b0b0d0;
+            font-size: 1em;
+        }
+        #available-games {
+            list-style: none;
+            padding: 0;
+            margin: 0 auto;
+            max-width: 700px;
+        }
+        #available-games li {
+            background-color: rgba(35, 40, 64, 0.8);
+            border: 1px solid #4f3a7f;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            padding: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        #available-games li:hover {
+            background-color: rgba(45, 50, 80, 0.9);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+        #available-games li span {
+            margin-right: 15px;
+            color: #c0c0e0;
+            font-size: 1.05em;
+        }
+        #available-games li button {
+            margin: 0;
+            padding: 10px 18px;
+            font-size: 0.95em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        #game-messages-container {
+            margin-top: 30px;
+            max-height: clamp(150px, 30vh, 250px); /* Responsive max-height */
+            overflow-y: auto;
+            border: 1px solid #4f3a7f;
+            border-radius: 12px;
+            padding: 15px;
+            background-color: #1a1e2b;
+            font-size: 0.95em;
+            text-align: left;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        #game-messages-container h4 {
+            color: #A78BFA;
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-shadow: 0 0 5px rgba(167, 139, 250, 0.5);
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+        }
+        #game-messages-container p {
+            margin: 5px 0;
+            color: #b0b0d0;
+            word-wrap: break-word; /* Ensure messages wrap */
+        }
+        .chat-message {
+            color: #e0e0e0;
+        }
+        .status-message {
+            color: #6EE7B7;
+            font-style: italic;
+        }
+        .error-message {
+            color: #EF4444; /* Brighter error red */
+            font-weight: bold;
+        }
+        #chat-input {
+            width: calc(100% - 130px); /* Adjust for button */
+            margin-top: 10px;
+            margin-right: 10px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        #game-messages-container button {
+            padding: 10px 18px;
+            font-size: 0.9em;
+            margin: 0;
+            vertical-align: middle;
+        }
 
         /* Game Specific Styles */
 
         /* Ludo */
         #ludo-board {
             display: grid;
-            grid-template-columns: repeat(15, 40px);
-            grid-template-rows: repeat(15, 40px);
+            grid-template-columns: repeat(15, 45px); /* Slightly larger cells */
+            grid-template-rows: repeat(15, 45px);
             gap: 1px;
             background-color: #000;
-            border: 2px solid #5a6a7a;
-            margin: 20px auto;
+            border: 4px solid #4f3a7f;
+            margin: 30px auto;
             position: relative;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+            max-width: fit-content;
         }
         .ludo-cell {
-            width: 40px;
-            height: 40px;
-            background-color: #6a7a8a; /* Default path */
+            width: 45px;
+            height: 45px;
+            background-color: #3b425b; /* Darker grey-blue default path */
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.7em;
+            font-size: 0.8em;
             position: relative;
+            border: 0.5px solid rgba(0,0,0,0.2);
         }
-        /* Specific Ludo cell colors and areas for base */
-        .ludo-cell.base-red { background-color: #e74c3c; }
-        .ludo-cell.base-blue { background-color: #3498db; }
-        .ludo-cell.base-green { background-color: #2ecc71; }
-        .ludo-cell.base-yellow { background-color: #f1c40f; }
+        .ludo-cell.path { background-color: #555c7a; } /* Light grey path */
+        .ludo-cell.safe { background-color: #6a7395; } /* Darker grey for safe spots */
+        .ludo-cell.home-entry { background-color: #4a516b; } /* Specific home path entry */
+        .ludo-cell.base-red { background-color: #e74c3c; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+        .ludo-cell.base-blue { background-color: #3498db; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+        .ludo-cell.base-green { background-color: #2ecc71; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+        .ludo-cell.base-yellow { background-color: #f1c40f; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+        .ludo-cell:nth-child(225) { /* Center cell */
+            background-color: #1a1e2b;
+            font-size: 2em;
+            color: #6EE7B7;
+            text-shadow: 0 0 5px rgba(110, 231, 183, 0.7);
+        }
 
-        .ludo-cell.path { background-color: #aaa; }
-        .ludo-cell.safe { background-color: #888; }
-        .ludo-cell.home-entry { background-color: #555; }
         .ludo-token {
-            width: 30px;
-            height: 30px;
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
             position: absolute;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.8em;
+            font-size: 0.9em;
             color: white;
-            border: 2px solid rgba(0,0,0,0.3);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-            transition: all 0.3s ease-in-out;
+            border: 2px solid rgba(255,255,255,0.4);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            transition: all 0.2s ease-in-out;
+            font-family: 'Cinzel Decorative', cursive;
+            font-weight: 700;
         }
         .ludo-token.red { background-color: #e74c3c; }
         .ludo-token.blue { background-color: #3498db; }
         .ludo-token.green { background-color: #2ecc71; }
         .ludo-token.yellow { background-color: #f1c40f; }
         .ludo-token.active {
-            transform: scale(1.1);
-            border-color: white;
-            box-shadow: 0 0 10px rgba(255,255,255,0.7);
+            transform: scale(1.15) translateY(-3px);
+            border-color: #6EE7B7; /* Green glow for active token */
+            box-shadow: 0 0 12px rgba(110, 231, 183, 0.9);
+            cursor: pointer;
         }
         .ludo-token.selected {
-            border-color: #4CAF50;
-            box-shadow: 0 0 12px rgba(76, 175, 80, 0.9);
+            border-color: #A78BFA; /* Purple glow for selected token */
+            box-shadow: 0 0 15px rgba(167, 139, 250, 1);
         }
 
         .ludo-dice {
-            width: 60px;
-            height: 60px;
-            background-color: #eee;
-            border-radius: 10px;
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(145deg, #1a1e2b, #3b425b); /* Dark gem-like dice */
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.5em;
+            font-size: 3em;
             font-weight: bold;
-            margin: 20px auto;
-            border: 2px solid #5a6a7a;
-            color: #333;
+            margin: 25px auto;
+            border: 2px solid #4f3a7f;
+            color: #6EE7B7; /* Ethereal green number */
             cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 0 15px rgba(110, 231, 183, 0.3);
+            transition: all 0.3s ease;
+            font-family: 'Cinzel Decorative', cursive;
+            text-shadow: 0 0 8px rgba(110, 231, 183, 0.8);
         }
         .ludo-dice:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.5), inset 0 0 20px rgba(110, 231, 183, 0.5);
         }
         .ludo-dice:active {
             transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3), inset 0 0 10px rgba(110, 231, 183, 0.2);
         }
         #ludo-player-homes {
             display: flex;
-            justify-content: space-around;
+            justify-content: center; /* Center them better */
             width: 100%;
-            margin-top: 15px;
+            margin-top: 20px;
             flex-wrap: wrap;
+            gap: 15px; /* Add gap between homes */
         }
         .ludo-player-home {
-            background-color: #3a4a5a;
-            border-radius: 8px;
-            padding: 10px;
-            margin: 5px;
-            min-width: 120px;
+            background-color: rgba(43, 48, 76, 0.8);
+            border-radius: 12px;
+            padding: 12px;
+            min-width: 140px;
             text-align: center;
-            border: 1px solid #5a6a7a;
+            border: 1px solid #4f3a7f;
             position: relative;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
         }
         .ludo-player-home.current-player {
-            border-color: #4CAF50;
-            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+            border-color: #6EE7B7;
+            box-shadow: 0 0 15px rgba(110, 231, 183, 0.7);
+            background-color: rgba(69, 79, 117, 0.9);
+        }
+        .ludo-player-home h4 {
+            color: #c0c0e0;
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
         }
         .ludo-player-home .tokens-at-home {
             display: flex;
             justify-content: center;
-            gap: 5px;
+            gap: 8px;
             margin-top: 5px;
+            min-height: 40px; /* Ensure space for tokens */
         }
         .ludo-player-home .token-placeholder {
-            width: 25px;
-            height: 25px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
-            background-color: rgba(255,255,255,0.2);
-            border: 1px dashed rgba(255,255,255,0.4);
+            background-color: rgba(255,255,255,0.1);
+            border: 1px dashed rgba(255,255,255,0.3);
             display: inline-block;
+            vertical-align: middle;
         }
 
         /* Monopoly */
         #monopoly-board {
             display: grid;
-            grid-template-columns: 100px repeat(9, 60px) 100px;
-            grid-template-rows: 100px repeat(9, 60px) 100px;
-            width: 800px; /* (100 + 9*60 + 100) */
-            height: 800px; /* (100 + 9*60 + 100) */
-            border: 5px solid #333;
-            margin: 20px auto;
-            background-color: #cce7d0; /* Board background */
+            grid-template-columns: 110px repeat(9, 65px) 110px; /* Slightly larger cells */
+            grid-template-rows: 110px repeat(9, 65px) 110px;
+            width: 900px; /* (110 + 9*65 + 110) */
+            height: 900px; /* (110 + 9*65 + 110) */
+            border: 5px solid #2d2d4d; /* Deeper board border */
+            margin: 30px auto;
+            background-color: #1a2a3a; /* Central mystical void */
             position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: 0 0 30px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.4);
+            max-width: 95%; /* Adjust for responsiveness */
         }
         .monopoly-square {
-            background-color: #fff;
-            border: 1px solid #ccc;
+            background-color: #2b304c; /* Darker square base */
+            border: 1px solid #3d4260; /* Darker border */
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.6em;
-            color: #333;
+            font-size: 0.65em;
+            color: #d0d0e0;
             text-align: center;
-            padding: 2px;
+            padding: 3px;
             box-sizing: border-box;
             position: relative;
+            transition: all 0.2s ease;
         }
         .monopoly-square.corner {
-            width: 100px;
-            height: 100px;
-            font-size: 0.8em;
-            padding: 5px;
+            width: 110px;
+            height: 110px;
+            font-size: 0.9em;
+            padding: 8px;
             justify-content: center;
         }
         .monopoly-square.top, .monopoly-square.bottom {
-            height: 100px;
-            width: 60px;
+            height: 110px;
+            width: 65px;
             flex-direction: column-reverse;
         }
         .monopoly-square.left, .monopoly-square.right {
-            width: 100px;
-            height: 60px;
+            width: 110px;
+            height: 65px;
             flex-direction: row;
         }
         /* Specific corners */
-        .square-go { background-color: #dff0d8; }
-        .square-jail { background-color: #f2dede; }
-        .square-free-parking { background-color: #d9edf7; }
-        .square-go-to-jail { background-color: #fcf8e3; }
+        .square-go { background-color: #284236; color: #6EE7B7; font-weight: bold; }
+        .square-jail { background-color: #5b3131; color: #EF4444; font-weight: bold; }
+        .square-free-parking { background-color: #3b425b; color: #A78BFA; font-weight: bold; }
+        .square-go-to-jail { background-color: #55552b; color: #f1c40f; font-weight: bold; }
 
         .monopoly-square .color-bar {
             width: 100%;
-            height: 15px;
+            height: 20px; /* Thicker color bar */
             background-color: grey;
             position: absolute;
             top: 0;
             left: 0;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
         }
         .monopoly-square.bottom .color-bar { bottom: 0; top: auto; }
-        .monopoly-square.left .color-bar { left: 0; top: auto; width: 15px; height: 100%; }
-        .monopoly-square.right .color-bar { right: 0; top: auto; width: 15px; height: 100%; }
+        .monopoly-square.left .color-bar { left: 0; top: auto; width: 20px; height: 100%; }
+        .monopoly-square.right .color-bar { right: 0; top: auto; width: 20px; height: 100%; }
 
-
-        .color-dark-purple { background-color: #4C0050; } /* Dark Purple */
-        .color-light-blue { background-color: #8be4ff; } /* Light Blue */
-        .color-pink { background-color: #ff0073; }       /* Pink (Magenta) */
-        .color-orange { background-color: #ff8c00; }     /* Orange */
-        .color-red { background-color: #ff0000; }        /* Red */
-        .color-yellow { background-color: #ffff00; }     /* Yellow */
-        .color-green { background-color: #008000; }      /* Green */
-        .color-dark-blue { background-color: #000080; }  /* Dark Blue */
-        .color-railroad { background-color: #333; }      /* Railroad */
-        .color-utility { background-color: #666; }       /* Utility */
+        /* Monopoly Color Groups (Celestial Gem Tones) */
+        .color-dark-purple { background-color: #6A0DAD; } /* Amethyst */
+        .color-light-blue { background-color: #87CEEB; } /* Aquamarine */
+        .color-pink { background-color: #FF69B4; }       /* Rose Quartz */
+        .color-orange { background-color: #FF8C00; }     /* Topaz */
+        .color-red { background-color: #DC143C; }        /* Ruby */
+        .color-yellow { background-color: #FFD700; }     /* Citrine */
+        .color-green { background-color: #2E8B57; }      /* Emerald */
+        .color-dark-blue { background-color: #4169E1; }  /* Sapphire */
+        .color-railroad { background-color: #5C5C5C; }    /* Obsidian */
+        .color-utility { background-color: #778899; }     /* Meteorite */
 
         .monopoly-token {
             position: absolute;
-            width: 20px;
-            height: 20px;
+            width: 25px; /* Larger tokens */
+            height: 25px;
             border-radius: 50%;
             background-color: blue; /* Default */
             border: 2px solid white;
@@ -384,10 +625,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.8em;
+            font-size: 0.9em;
             color: white;
             font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4), 0 0 8px rgba(255,255,255,0.3);
+            transition: all 0.3s ease;
         }
         .monopoly-token.p1 { background-color: #e74c3c; } /* Red */
         .monopoly-token.p2 { background-color: #3498db; } /* Blue */
@@ -398,102 +640,111 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-top: 20px;
+            margin-top: 25px;
         }
         #monopoly-dice-container {
             display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 15px;
+            margin-bottom: 20px;
         }
         .monopoly-dice {
-            width: 50px;
-            height: 50px;
-            background-color: #eee;
-            border-radius: 8px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(145deg, #1a1e2b, #3b425b); /* Themed dice */
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2em;
+            font-size: 2.5em;
             font-weight: bold;
-            color: #333;
-            border: 1px solid #5a6a7a;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            color: #A78BFA;
+            border: 2px solid #4f3a7f;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 0 10px rgba(167, 139, 250, 0.3);
+            font-family: 'Cinzel Decorative', cursive;
+            text-shadow: 0 0 8px rgba(167, 139, 250, 0.8);
         }
         #monopoly-current-player-info {
-            background-color: #3a4a5a;
-            border-radius: 8px;
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            min-width: 250px;
+            background-color: rgba(43, 48, 76, 0.9);
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            min-width: 300px;
             text-align: center;
-            border: 1px solid #5a6a7a;
-            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+            border: 1px solid #4f3a7f;
+            box-shadow: 0 0 12px rgba(0,0,0,0.4);
+            font-size: 1.1em;
         }
         #monopoly-current-player-info strong {
-            color: #4CAF50;
-            font-size: 1.2em;
+            color: #6EE7B7;
+            font-size: 1.3em;
+            text-shadow: 0 0 5px rgba(110, 231, 183, 0.5);
         }
         #monopoly-player-holdings {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 20px;
+            margin-top: 30px;
+            width: 100%;
         }
         .monopoly-player-card {
-            background-color: #3a4a5a;
-            border-radius: 8px;
-            padding: 10px 15px;
-            border: 1px solid #5a6a7a;
-            min-width: 200px;
+            background-color: rgba(43, 48, 76, 0.8);
+            border-radius: 10px;
+            padding: 15px 20px;
+            border: 1px solid #4f3a7f;
+            min-width: 220px;
             text-align: left;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            max-height: 250px; /* Constrain height */
+            overflow-y: auto; /* Enable scroll */
         }
         .monopoly-player-card h4 {
             margin-top: 0;
-            color: #b0e0b0;
-            border-bottom: 1px dashed #5a6a7a;
-            padding-bottom: 5px;
+            color: #A78BFA;
+            border-bottom: 1px dashed #6a5a9c;
+            padding-bottom: 8px;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
         }
         .monopoly-player-card ul {
             list-style: none;
             padding: 0;
             margin: 0;
-            max-height: 150px;
-            overflow-y: auto;
         }
         .monopoly-player-card li {
-            font-size: 0.9em;
-            margin-bottom: 3px;
-            color: #ccc;
+            font-size: 0.95em;
+            margin-bottom: 5px;
+            color: #c0c0e0;
         }
         .monopoly-action-popup {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: #2b3b4b;
-            border: 2px solid #4CAF50;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.7);
+            background-color: rgba(27, 32, 56, 0.95);
+            border: 2px solid #6EE7B7;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 0 30px rgba(110, 231, 183, 0.7), 0 0 15px rgba(0, 0, 0, 0.7);
             z-index: 1000;
             display: none;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 25px;
             max-width: 90%;
             text-align: center;
-            font-size: 1.1em;
+            font-size: 1.2em;
         }
         .monopoly-action-popup p {
             margin: 0;
-            font-size: 1.2em;
-            color: #eee;
+            font-size: 1.3em;
+            color: #e0e0e0;
+            text-shadow: 0 0 5px rgba(255,255,255,0.3);
         }
         .monopoly-action-popup button {
-            margin: 5px;
-            padding: 10px 20px;
-            font-size: 1em;
+            margin: 8px;
+            padding: 12px 25px;
+            font-size: 1.1em;
         }
 
         /* Uno */
@@ -507,87 +758,108 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-bottom: 20px;
-            gap: 20px;
-            min-height: 150px;
+            margin-bottom: 30px;
+            gap: 30px;
+            min-height: 180px;
         }
         #uno-draw-pile, #uno-discard-pile {
-            width: 100px;
-            height: 150px;
-            border: 2px dashed #5a6a7a;
-            border-radius: 10px;
+            width: 110px; /* Larger cards */
+            height: 160px;
+            border: 3px dashed #4f3a7f;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: rgba(0,0,0,0.2);
-            font-size: 0.9em;
-            color: #bbb;
+            background-color: rgba(0,0,0,0.25);
+            font-size: 1em;
+            color: #b0b0d0;
             position: relative;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
         }
         #uno-discard-pile .uno-card {
             position: absolute;
-            transform: rotate(randomAngle) scale(1); /* Dynamic rotation via JS */
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transform: rotate(randomAngle) scale(1);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
         }
         #uno-draw-pile.active {
             cursor: pointer;
-            border-color: #4CAF50;
-            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+            border-color: #6EE7B7;
+            box-shadow: 0 0 15px rgba(110, 231, 183, 0.7), inset 0 0 15px rgba(110, 231, 183, 0.3);
+            background-color: rgba(30, 40, 60, 0.5);
         }
         #uno-current-player-hand {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 10px;
-            margin-top: 20px;
-            min-height: 180px;
-            padding: 10px;
-            border: 1px solid #4a5a6a;
-            border-radius: 10px;
-            background-color: #3b4b5b;
-            max-width: 90%;
+            gap: 12px;
+            margin-top: 25px;
+            min-height: 200px;
+            padding: 15px;
+            border: 1px solid #4f3a7f;
+            border-radius: 15px;
+            background-color: rgba(35, 40, 64, 0.8);
+            max-width: 95%;
             overflow-x: auto;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
         }
         .uno-card {
-            width: 80px;
-            height: 120px;
+            width: 90px; /* Card size */
+            height: 130px;
             background-color: #eee;
-            border-radius: 8px;
+            border-radius: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 1.8em;
+            font-size: 2em;
             font-weight: bold;
             color: white;
-            border: 1px solid #333;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            border: 2px solid #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             cursor: pointer;
-            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+            transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
             position: relative;
             background-position: center;
             background-size: cover;
+            font-family: 'Cinzel Decorative', cursive;
         }
-        .uno-card.red { background-color: #e74c3c; }
-        .uno-card.blue { background-color: #3498db; }
-        .uno-card.green { background-color: #2ecc71; }
-        .uno-card.yellow { background-color: #f1c40f; }
-        .uno-card.wild { background-image: linear-gradient(135deg, #e74c3c, #3498db, #2ecc71, #f1c40f); }
-        .uno-card.wild-draw-four { background-image: linear-gradient(135deg, #e74c3c, #3498db, #2ecc71, #f1c40f); }
+        .uno-card.red { background-color: #e74c3c; border-color: #b33c30; }
+        .uno-card.blue { background-color: #3498db; border-color: #276fa8; }
+        .uno-card.green { background-color: #2ecc71; border-color: #249959; }
+        .uno-card.yellow { background-color: #f1c40f; border-color: #b19323; }
+        .uno-card.wild { 
+            background: linear-gradient(135deg, #e74c3c, #3498db, #2ecc71, #f1c40f); 
+            border-color: #8B5CF6;
+        }
+        .uno-card.wild-draw-four { 
+            background: linear-gradient(135deg, #e74c3c, #3498db, #2ecc71, #f1c40f); 
+            border-color: #A78BFA;
+        }
+        .uno-card.back-of-card {
+            background: linear-gradient(45deg, #8B5CF6, #4f3a7f);
+            border: 2px solid #6EE7B7;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4), 0 0 10px rgba(110, 231, 183, 0.5);
+            font-size: 0; /* Hide value */
+        }
 
         .uno-card.active {
-            transform: translateY(-5px) scale(1.05);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
-            border-color: #4CAF50;
+            transform: translateY(-8px) scale(1.08);
+            box-shadow: 0 8px 18px rgba(0,0,0,0.5), 0 0 15px rgba(167, 139, 250, 0.7);
+            border-color: #A78BFA;
         }
         .uno-card.disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
+            filter: grayscale(30%);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transform: none;
         }
         .uno-card .card-value {
-            z-index: 1; /* Ensure value is on top */
+            z-index: 1;
             color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+            font-size: 1.8em;
         }
         .uno-card .card-color-indicator {
             position: absolute;
@@ -601,50 +873,64 @@
             font-size: 0.8em;
             text-transform: capitalize;
             color: rgba(255,255,255,0.4);
+            pointer-events: none; /* Make sure it doesn't block click on the card */
         }
 
         #uno-controls {
-            margin-top: 20px;
-            position: relative; /* For color picker positioning */
+            margin-top: 30px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
         }
         #uno-declare-button {
-            background-color: #e67e22; /* Orange for Uno! */
+            background: linear-gradient(145deg, #e67e22, #f39c12); /* Orange for Uno! */
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4), 0 0 15px rgba(243, 156, 18, 0.5);
+        }
+        #uno-declare-button:hover {
+            background: linear-gradient(145deg, #f39c12, #e67e22);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5), 0 0 20px rgba(243, 156, 18, 0.8);
         }
         #uno-declare-button.active {
-            box-shadow: 0 0 15px rgba(230, 126, 34, 0.7);
+            box-shadow: 0 0 20px rgba(230, 126, 34, 0.9);
             border: 2px solid #f39c12;
             animation: pulse-orange 1s infinite alternate;
         }
         @keyframes pulse-orange {
-            from { box-shadow: 0 0 15px rgba(230, 126, 34, 0.7); }
-            to { box-shadow: 0 0 25px rgba(230, 126, 34, 1); }
+            from { box-shadow: 0 0 20px rgba(230, 126, 34, 0.9); }
+            to { box-shadow: 0 0 35px rgba(230, 126, 34, 1.2); }
         }
         .uno-color-picker {
             position: absolute;
-            background-color: #2b3b4b;
-            border: 1px solid #4CAF50;
-            border-radius: 8px;
-            padding: 10px;
+            background-color: rgba(27, 32, 56, 0.95);
+            border: 2px solid #A78BFA;
+            border-radius: 12px;
+            padding: 15px;
             display: none;
-            flex-direction: column;
-            gap: 5px;
+            flex-direction: row; /* Horizontal buttons */
+            gap: 10px;
             z-index: 100;
             left: 50%;
             transform: translateX(-50%);
             bottom: 100%; /* Position above controls */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            margin-bottom: 20px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5), 0 0 20px rgba(167, 139, 250, 0.8);
         }
         .uno-color-picker button {
-            width: 40px;
-            height: 40px;
+            width: 45px; /* Larger color choice buttons */
+            height: 45px;
             border-radius: 50%;
             margin: 0;
-            border: 2px solid transparent;
-            font-size: 0; /* Hide text */
+            border: 3px solid transparent;
+            font-size: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
         }
         .uno-color-picker button:hover {
-            border-color: #fff;
-            transform: scale(1.1);
+            border-color: #e0e0e0;
+            transform: scale(1.15);
+            box-shadow: 0 0 15px rgba(255,255,255,0.7);
         }
         .uno-color-picker button.red { background-color: #e74c3c; }
         .uno-color-picker button.blue { background-color: #3498db; }
@@ -654,259 +940,264 @@
         /* Chess Game */
         #chess-board {
             display: grid;
-            grid-template-columns: repeat(8, 60px);
-            grid-template-rows: repeat(8, 60px);
-            width: 480px; /* 8 * 60px */
-            height: 480px; /* 8 * 60px */
-            border: 4px solid #795548; /* Wood color border */
-            margin: 20px auto;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            grid-template-columns: repeat(8, 70px); /* Larger cells */
+            grid-template-rows: repeat(8, 70px);
+            width: 560px; /* 8 * 70px */
+            height: 560px; /* 8 * 70px */
+            border: 6px solid #4f3a7f; /* Mystic border color */
+            margin: 30px auto;
+            box-shadow: 0 0 25px rgba(0,0,0,0.6), inset 0 0 15px rgba(0,0,0,0.4);
+            max-width: 95%;
         }
         .chess-cell {
-            width: 60px;
-            height: 60px;
+            width: 70px;
+            height: 70px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.5em; /* For pieces */
+            font-size: 3em; /* For pieces */
             cursor: pointer;
             user-select: none;
             position: relative;
+            transition: background-color 0.1s ease;
         }
         .chess-cell.light {
-            background-color: #f0d9b5; /* Light square color */
+            background-color: #7a6a9c; /* Lighter mystic purple-grey */
         }
         .chess-cell.dark {
-            background-color: #b58863; /* Dark square color */
+            background-color: #4f3a7f; /* Darker mystic purple */
         }
         .chess-cell.selected {
-            background-color: #ffcc00; /* Selected piece highlight */
+            background-color: #A78BFA; /* Selected piece highlight */
+            box-shadow: inset 0 0 15px rgba(167, 139, 250, 0.7);
         }
         .chess-cell.highlight-move {
-            background-color: #7ED957; /* Valid move highlight */
-            border-radius: 50%; /* Make highlight a dot */
+            background-color: #6EE7B7; /* Valid move highlight */
+            border-radius: 50%;
             opacity: 0.7;
-            margin: 15px; /* Shrink to a dot */
+            margin: 20px; /* Shrink to a dot */
             width: 30px;
             height: 30px;
+            box-shadow: 0 0 10px rgba(110, 231, 183, 0.7);
         }
         .chess-cell.highlight-capture {
-            box-shadow: inset 0 0 0 5px #e74c3c; /* Red border effect */
-            border-radius: 5px; /* So it doesn't clip the piece too much */
+            box-shadow: inset 0 0 0 5px #EF4444; /* Red border effect */
+            border-radius: 5px;
         }
         .chess-cell .chess-piece {
-            font-size: 1.5em;
+            font-size: 1.8em; /* Adjusted for larger cells */
             color: #333; /* Default for piece symbols */
-            line-height: 1; /* Adjust vertical alignment */
+            line-height: 1;
             z-index: 1;
+            font-family: 'Times New Roman', serif; /* Classic chess pieces feel */
+            text-shadow: 0 0 5px rgba(255,255,255,0.7);
+            transition: color 0.2s ease;
         }
-        /* Custom colors for pieces if desired, otherwise standard black/white unicode */
-        .chess-piece.white { color: #eee; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
-        .chess-piece.black { color: #333; text-shadow: 1px 1px 2px rgba(255,255,255,0.5); }
+        .chess-piece.white { color: #e0e0e0; text-shadow: 0 0 8px rgba(255,255,255,0.9); }
+        .chess-piece.black { color: #333; text-shadow: 0 0 8px rgba(0,0,0,0.9); }
 
         #chess-player-info {
-            margin-top: 20px;
+            margin-top: 25px;
+            font-size: 1.2em;
         }
         #chess-player-info strong {
-            color: #4CAF50;
-            font-size: 1.2em;
+            color: #6EE7B7;
+            font-size: 1.3em;
+            text-shadow: 0 0 5px rgba(110, 231, 183, 0.5);
         }
         #chess-controls button {
-            margin-top: 15px;
-        }
-
-        /* Lobby specific styles */
-        #online-lobby-section {
-            text-align: center;
-        }
-        #lobby-status {
-            font-size: 1.2em;
-            color: #b0e0b0;
-            margin-bottom: 20px;
-        }
-        #player-name-input-group {
-            margin-bottom: 20px;
-        }
-        #player-name-input-group label {
-            margin-right: 10px;
-        }
-        #lobby-controls {
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-        #create-game-form {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        #create-game-form select, #create-game-form input {
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #5a6a7a;
-            background-color: #1a2a3a;
-            color: #eee;
-        }
-        #available-games {
-            list-style: none;
-            padding: 0;
-            margin: 0 auto;
-            max-width: 600px;
-        }
-        #available-games li {
-            background-color: #3b4b5b;
-            border: 1px solid #5a6a7a;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        #available-games li span {
-            margin-right: 10px;
-            color: #ccc;
-        }
-        #available-games li button {
-            margin: 0;
-            padding: 8px 15px;
-            font-size: 0.9em;
-        }
-        #game-messages-container {
             margin-top: 20px;
-            max-height: 150px;
-            overflow-y: auto;
-            border: 1px solid #5a6a7a;
-            border-radius: 8px;
-            padding: 10px;
-            background-color: #1a2a3a;
-            font-size: 0.9em;
-            text-align: left;
-        }
-        #game-messages-container p {
-            margin: 3px 0;
-            color: #bbb;
-        }
-        .chat-message {
-            color: #fff;
-        }
-        .status-message {
-            color: #b0e0b0;
-        }
-        .error-message {
-            color: #e74c3c;
         }
 
         /* Responsive Adjustments */
+        @media (max-width: 900px) {
+            .monopoly-square.corner {
+                width: 90px;
+                height: 90px;
+            }
+            .monopoly-square.top, .monopoly-square.bottom {
+                height: 90px;
+                width: 55px;
+            }
+            .monopoly-square.left, .monopoly-square.right {
+                width: 90px;
+                height: 55px;
+            }
+            #monopoly-board {
+                width: 770px; /* (90 + 9*55 + 90) */
+                height: 770px;
+                grid-template-columns: 90px repeat(9, 55px) 90px;
+                grid-template-rows: 90px repeat(9, 55px) 90px;
+            }
+        }
+
         @media (max-width: 768px) {
             .container {
                 width: 95%;
-                padding: 15px;
+                padding: clamp(15px, 3vw, 20px); /* Smaller padding */
             }
-            h1 {
-                font-size: 1.8em;
-            }
+            h1 { font-size: 2.5em; }
+            h2 { font-size: 2em; }
+            h3 { font-size: 1.5em; }
             button {
                 padding: 10px 20px;
                 font-size: 1em;
             }
             .game-selection-grid {
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                gap: 15px;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 20px;
             }
             .game-card {
-                padding: 20px;
+                padding: 25px;
             }
             .game-card h3 {
-                font-size: 1.5em;
+                font-size: 1.8em;
             }
             .game-card .icon {
-                font-size: 2.5em;
+                font-size: 3.5em;
+            }
+            .player-setup-entry {
+                flex-direction: column;
+                gap: 5px;
+            }
+            .player-setup-entry label {
+                text-align: center;
+                min-width: unset;
+            }
+            input[type="text"], input[type="number"], select {
+                width: 90%;
             }
 
             /* Ludo */
             #ludo-board {
-                grid-template-columns: repeat(15, 25px);
-                grid-template-rows: repeat(15, 25px);
-                width: auto;
-                height: auto;
+                grid-template-columns: repeat(15, 35px);
+                grid-template-rows: repeat(15, 35px);
             }
             .ludo-cell {
-                width: 25px;
-                height: 25px;
-            }
-            .ludo-token {
-                width: 20px;
-                height: 20px;
+                width: 35px;
+                height: 35px;
                 font-size: 0.7em;
             }
+            .ludo-token {
+                width: 28px;
+                height: 28px;
+                font-size: 0.8em;
+            }
             .ludo-dice {
-                width: 50px;
-                height: 50px;
-                font-size: 2em;
+                width: 60px;
+                height: 60px;
+                font-size: 2.5em;
             }
             .ludo-player-home {
-                min-width: 100px;
-                padding: 5px;
-                font-size: 0.9em;
-            }
-            .ludo-player-home h4 {
-                font-size: 1em;
+                min-width: 120px;
+                padding: 8px;
             }
 
             /* Monopoly */
             #monopoly-board {
                 width: 100%;
                 height: auto;
-                grid-template-columns: 80px repeat(9, 40px) 80px;
-                grid-template-rows: 80px repeat(9, 40px) 80px;
+                grid-template-columns: 70px repeat(9, 35px) 70px;
+                grid-template-rows: 70px repeat(9, 35px) 70px;
             }
             .monopoly-square {
                 font-size: 0.5em;
             }
             .monopoly-square.corner {
-                width: 80px;
-                height: 80px;
+                width: 70px;
+                height: 70px;
+                font-size: 0.7em;
             }
             .monopoly-square.top, .monopoly-square.bottom {
-                height: 80px;
-                width: 40px;
+                height: 70px;
+                width: 35px;
             }
             .monopoly-square.left, .monopoly-square.right {
-                width: 80px;
-                height: 40px;
+                width: 70px;
+                height: 35px;
             }
             .monopoly-token {
-                width: 15px;
-                height: 15px;
+                width: 18px;
+                height: 18px;
                 font-size: 0.7em;
             }
             .monopoly-player-card {
-                min-width: 150px;
+                min-width: 180px;
+            }
+            #monopoly-current-player-info {
+                min-width: 280px;
+                font-size: 1em;
+            }
+            #monopoly-current-player-info strong {
+                font-size: 1.1em;
             }
 
             /* Uno */
             .uno-card {
-                width: 60px;
-                height: 90px;
-                font-size: 1.4em;
+                width: 70px;
+                height: 100px;
+                font-size: 1.6em;
             }
             #uno-draw-pile, #uno-discard-pile {
-                width: 80px;
-                height: 120px;
+                width: 90px;
+                height: 130px;
+                font-size: 0.9em;
             }
             #uno-current-player-hand {
-                max-height: 120px;
-                min-height: 120px;
+                max-height: 150px;
+                min-height: 150px;
+                padding: 10px;
+            }
+            .uno-color-picker button {
+                width: 35px;
+                height: 35px;
             }
 
             /* Chess */
+            #chess-board {
+                width: 400px; /* 8 * 50px */
+                height: 400px; /* 8 * 50px */
+                grid-template-columns: repeat(8, 50px);
+                grid-template-rows: repeat(8, 50px);
+            }
+            .chess-cell {
+                width: 50px;
+                height: 50px;
+                font-size: 2.5em;
+            }
+            .chess-cell.highlight-move {
+                margin: 15px; /* Adjust dot size */
+                width: 20px;
+                height: 20px;
+            }
+            .chess-cell .chess-piece {
+                font-size: 1.5em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 { font-size: 2em; }
+            h2 { font-size: 1.6em; }
+            .game-card { padding: 15px; }
+            .game-card h3 { font-size: 1.4em; }
+            .game-card .icon { font-size: 3em; }
+            #monopoly-board {
+                width: 100%;
+                grid-template-columns: 60px repeat(9, 30px) 60px;
+                grid-template-rows: 60px repeat(9, 30px) 60px;
+            }
+            .monopoly-square.corner {
+                width: 60px;
+                height: 60px;
+            }
+            .monopoly-square.top, .monopoly-square.bottom {
+                height: 60px;
+                width: 30px;
+            }
+            .monopoly-square.left, .monopoly-square.right {
+                width: 60px;
+                height: 30px;
+            }
             #chess-board {
                 width: 320px; /* 8 * 40px */
                 height: 320px; /* 8 * 40px */
@@ -918,18 +1209,42 @@
                 height: 40px;
                 font-size: 2em;
             }
-            .chess-cell.highlight-move {
-                margin: 10px; /* Adjust dot size */
-                width: 20px;
-                height: 20px;
+            .monopoly-action-popup {
+                padding: 25px;
+                font-size: 1em;
+            }
+            .monopoly-action-popup p {
+                font-size: 1.1em;
+            }
+            /* Adjust player setup entries for very small screens */
+            .player-setup-entry {
+                flex-direction: column;
+                align-items: stretch; /* Stretch to fill width */
+                max-width: 95%; /* Constrain overall width */
+                margin: 0 auto 10px auto; /* Center with margin */
+            }
+            .player-setup-entry label {
+                text-align: left;
+                width: 100%;
+            }
+            .player-setup-entry input[type="text"],
+            .player-setup-entry input[type="number"],
+            .player-setup-entry select {
+                width: 100%; /* Make inputs fill available width */
+                box-sizing: border-box; /* Include padding/border in width */
+            }
+            .player-setup-entry input[type="radio"] {
+                margin-left: 0; /* Align radios left */
+                align-self: flex-start; /* Align radio group to start */
             }
         }
+
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Multiplayer Multi Game Hub</h1>
+            <h1>Celestial Nexus of Games</h1>
             <nav id="main-nav">
                 <button onclick="showSection('home-screen')">Home</button>
                 <button onclick="showSection('online-lobby-section')">Online Lobby</button>
@@ -937,8 +1252,8 @@
         </header>
 
         <section id="home-screen" class="section active">
-            <h2>Welcome to the Game Hub!</h2>
-            <p>Select a game to play against AI or a friend (hot-seat).</p>
+            <h2>Welcome to the Celestial Nexus!</h2>
+            <p>Peer into the ethereal realm of games. Select a game to play against mystic AI or with fellow adventurers.</p>
 
             <div class="game-selection-grid">
                 <div class="game-card ludo" onclick="showGameSetup('ludo', 'local')">
@@ -1201,7 +1516,8 @@
 
     <script>
         // GLOBAL GAME STATE & UTILITIES
-        const WS_URL = 'ws://localhost:8080'; // Your WebSocket server address
+        // IMPORTANT: For online play, this WS_URL MUST be updated to your Render backend URL after deployment.
+        const WS_URL = 'ws://localhost:8080'; 
         let ws = null; // WebSocket connection
         let myClientId = null; // Client ID assigned by server
         let myPlayerName = localStorage.getItem('myPlayerName') || 'Guest'; // Stored player name
@@ -2062,8 +2378,8 @@
         function renderLudoBoard() {
             const boardEl = DOM.$('#ludo-board');
             boardEl.innerHTML = ''; // Clear previous board
-            boardEl.style.gridTemplateColumns = `repeat(${LUDO_BOARD_SIZE}, 40px)`;
-            boardEl.style.gridTemplateRows = `repeat(${LUDO_BOARD_SIZE}, 40px)`;
+            boardEl.style.gridTemplateColumns = `repeat(${LUDO_BOARD_SIZE}, 45px)`;
+            boardEl.style.gridTemplateRows = `repeat(${LUDO_BOARD_SIZE}, 45px)`;
 
             // Create all cells first
             for (let r = 0; r < LUDO_BOARD_SIZE; r++) {
@@ -2635,8 +2951,8 @@
                 if (squareData.group && !['railroad', 'utility', 'action', 'tax', 'corner'].includes(squareData.group)) {
                     const colorBar = DOM.create('div', ['color-bar', `color-${squareData.group}`]);
                     if (cell.classList.contains('bottom')) { colorBar.style.top = 'auto'; colorBar.style.bottom = '0'; }
-                    if (cell.classList.contains('left')) { colorBar.style.top = '0'; colorBar.style.left = '0'; colorBar.style.width = '15px'; colorBar.style.height = '100%'; }
-                    if (cell.classList.contains('right')) { colorBar.style.top = '0'; colorBar.style.right = '0'; colorBar.style.width = '15px'; colorBar.style.height = '100%'; }
+                    if (cell.classList.contains('left')) { colorBar.style.top = '0'; colorBar.style.left = '0'; colorBar.style.width = '20px'; colorBar.style.height = '100%'; } /* Adjusted width */
+                    if (cell.classList.contains('right')) { colorBar.style.top = '0'; colorBar.style.right = '0'; colorBar.style.width = '20px'; colorBar.style.height = '100%'; } /* Adjusted width */
                     cell.appendChild(colorBar);
                 }
 
@@ -2751,8 +3067,8 @@
                 const squareEl = boardEl.querySelector(`[data-index="${player.position}"]`);
                 if (squareEl) {
                     const tokensOnSquare = squareEl.querySelectorAll('.monopoly-token').length;
-                    tokenEl.style.left = `${10 + (tokensOnSquare * 15)}px`;
-                    tokenEl.style.top = `${10 + (tokensOnSquare * 15)}px`;
+                    tokenEl.style.left = `${15 + (tokensOnSquare * 15)}px`; /* Adjusted token position */
+                    tokenEl.style.top = `${15 + (tokensOnSquare * 15)}px`; /* Adjusted token position */
                     squareEl.appendChild(tokenEl);
                 }
             });
