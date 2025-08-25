@@ -6,6 +6,11 @@
     <title>Celestial Nexus of Games</title>
     <!-- Google Fonts for mystic flair -->
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <!-- Add Firestore if you want client-side Firestore access for something else, but server is authoritative now -->
+    <!-- <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script> -->
     <style>
         /* Global Styles - Celestial Nexus Theme */
         body {
@@ -273,6 +278,24 @@
             margin-bottom: 25px;
             text-shadow: 0 0 5px rgba(110, 231, 183, 0.5);
         }
+        #auth-controls {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: rgba(43, 48, 76, 0.8);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        #auth-controls input {
+            margin-bottom: 10px;
+        }
+        #auth-status {
+            color: #c0c0e0;
+            margin-bottom: 15px;
+        }
+        #auth-status.logged-in { color: #6EE7B7; }
+        #auth-status.logged-out { color: #EF4444; }
+
+
         #player-name-input-group {
             margin-bottom: 25px;
             display: flex;
@@ -776,11 +799,7 @@
             position: relative;
             box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
             transition: all 0.3s ease;
-        }
-        #uno-discard-pile .uno-card {
-            position: absolute;
-            transform: rotate(randomAngle) scale(1);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+            overflow: hidden; /* For card animations */
         }
         #uno-draw-pile.active {
             cursor: pointer;
@@ -788,6 +807,13 @@
             box-shadow: 0 0 15px rgba(110, 231, 183, 0.7), inset 0 0 15px rgba(110, 231, 183, 0.3);
             background-color: rgba(30, 40, 60, 0.5);
         }
+        #uno-discard-pile .uno-card {
+            position: absolute;
+            transform: rotate(var(--card-rotation, 0deg)) scale(1);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+
         #uno-current-player-hand {
             display: flex;
             flex-wrap: wrap;
@@ -823,6 +849,7 @@
             background-position: center;
             background-size: cover;
             font-family: 'Cinzel Decorative', cursive;
+            user-select: none;
         }
         .uno-card.red { background-color: #e74c3c; border-color: #b33c30; }
         .uno-card.blue { background-color: #3498db; border-color: #276fa8; }
@@ -831,11 +858,13 @@
         .uno-card.wild { 
             background: linear-gradient(135deg, #e74c3c, #3498db, #2ecc71, #f1c40f); 
             border-color: #8B5CF6;
+            animation: wild-card-glow 2s infinite alternate;
         }
-        .uno-card.wild-draw-four { 
-            background: linear-gradient(135deg, #e74c3c, #3498db, #2ecc71, #f1c40f); 
-            border-color: #A78BFA;
+        @keyframes wild-card-glow {
+            from { box-shadow: 0 0 10px rgba(167, 139, 250, 0.5), 0 0 20px rgba(255, 255, 255, 0.2); }
+            to { box-shadow: 0 0 15px rgba(167, 139, 250, 0.8), 0 0 25px rgba(255, 255, 255, 0.4); }
         }
+
         .uno-card.back-of-card {
             background: linear-gradient(45deg, #8B5CF6, #4f3a7f);
             border: 2px solid #6EE7B7;
@@ -1287,6 +1316,17 @@
             <h2>Online Lobby</h2>
             <p id="lobby-status">Connecting to server...</p>
 
+            <!-- Firebase Authentication Controls -->
+            <div id="auth-controls">
+                <h3>Account Access</h3>
+                <p id="auth-status" class="logged-out">Not logged in.</p>
+                <input type="email" id="auth-email" placeholder="Email" autocomplete="username">
+                <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password">
+                <button onclick="handleAuthAction('login')">Login</button>
+                <button onclick="handleAuthAction('register')">Register</button>
+                <button onclick="handleAuthAction('logout')" style="display:none;" id="logout-button">Logout</button>
+            </div>
+
             <div id="player-name-input-group">
                 <label for="my-player-name">Your Name:</label>
                 <input type="text" id="my-player-name" placeholder="Enter your name">
@@ -1466,7 +1506,7 @@
                 <div id="uno-player-info" class="player-info"></div>
                 <div id="uno-current-player-hand"></div>
                 <div id="uno-controls">
-                    <button id="uno-declare-button" onclick="sendUnoDeclare()" style="display: none;">UNO!</button>
+                    <button id="uno-declare-button" onclick="sendUnoDeclare()">UNO!</button>
                     <button id="uno-end-draw-turn-button" style="display: none;" onclick="sendUnoEndTurn()">End Turn After Draw</button>
                     <div id="uno-color-picker" class="uno-color-picker">
                         <button class="red" onclick="sendUnoWildColor('red')">Red</button>
@@ -1515,17 +1555,34 @@
     </div>
 
     <script>
+        // --- Firebase Configuration (IMPORTANT: Replace with your actual config!) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEZYdZH_yV2_UgKudWK94KK_RcO_RQ0k4",
+            authDomain: "chess-app-399e9.firebaseapp.com",
+            projectId: "chess-app-399e9",
+            storageBucket: "chess-app-399e9.firebasestorage.app",
+            messagingSenderId: "279867966438",
+            appId: "1:279867966438:web:e4770e84b79eaed6378c27",
+            measurementId: "G-SMPQK56WNG"
+            };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        // const db = firebase.firestore(); // Not needed client-side for game state, server is authoritative
+
+
         // GLOBAL GAME STATE & UTILITIES
         // IMPORTANT: For online play, this WS_URL MUST be updated to your Render backend URL after deployment.
         const WS_URL = 'ws://localhost:8080'; 
         let ws = null; // WebSocket connection
-        let myClientId = null; // Client ID assigned by server
+        let myClientId = null; // Client ID assigned by server (ephemeral)
+        let myFirebaseId = null; // Firebase User UID (persistent)
         let myPlayerName = localStorage.getItem('myPlayerName') || 'Guest'; // Stored player name
         let currentOnlineGameId = null; // ID of the game I'm currently in
         let currentOnlineGameType = null; // Type of game I'm currently in ('ludo', 'monopoly', etc.)
         let currentPlayMode = 'local'; // 'local' or 'online'
 
-        // Centralized game state objects for local play
+        // Centralized game state objects for local play. For online, these are updated from server.
         let ludo = {};
         let monopoly = {};
         let uno = {};
@@ -1639,8 +1696,92 @@
                     showSection('online-lobby-section');
                     currentOnlineGameId = null;
                     currentOnlineGameType = null;
+                    // Also explicitly tell server to leave the game
+                    if (ws && ws.readyState === WebSocket.OPEN && currentOnlineGameId) {
+                         ws.send(JSON.stringify({ type: 'LEAVE_GAME', gameId: currentOnlineGameId }));
+                    }
                 }
              }
+        }
+
+
+        // --- Firebase Authentication Logic ---
+
+        let currentAuthUser = null; // Stores Firebase user object
+
+        // Listener for Firebase Auth state changes
+        auth.onAuthStateChanged(user => {
+            currentAuthUser = user;
+            const authStatusEl = DOM.$('#auth-status');
+            const logoutButton = DOM.$('#logout-button');
+            const authEmailInput = DOM.$('#auth-email');
+            const authPasswordInput = DOM.$('#auth-password');
+
+            if (user) {
+                authStatusEl.textContent = `Logged in as: ${user.email}`;
+                authStatusEl.classList.remove('logged-out');
+                authStatusEl.classList.add('logged-in');
+                logoutButton.style.display = 'inline-block';
+                authEmailInput.style.display = 'none';
+                authPasswordInput.style.display = 'none';
+                DOM.$('#auth-controls').querySelector('button[onclick="handleAuthAction(\'login\')"]').style.display = 'none';
+                DOM.$('#auth-controls').querySelector('button[onclick="handleAuthAction(\'register\')"]').style.display = 'none';
+                
+                myFirebaseId = user.uid;
+                myPlayerName = localStorage.getItem('myPlayerName') || user.email.split('@')[0]; // Default name from email
+                DOM.$('#my-player-name').value = myPlayerName;
+
+                // Send Firebase ID to WebSocket server if connected
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    sendAuthIdToWebSocketServer();
+                }
+            } else {
+                authStatusEl.textContent = 'Not logged in.';
+                authStatusEl.classList.remove('logged-in');
+                authStatusEl.classList.add('logged-out');
+                logoutButton.style.display = 'none';
+                authEmailInput.style.display = 'inline-block';
+                authPasswordInput.style.display = 'inline-block';
+                DOM.$('#auth-controls').querySelector('button[onclick="handleAuthAction(\'login\')"]').style.display = 'inline-block';
+                DOM.$('#auth-controls').querySelector('button[onclick="handleAuthAction(\'register\')"]').style.display = 'inline-block';
+                
+                myFirebaseId = null;
+                // Keep local player name if not logged in
+                DOM.$('#my-player-name').value = myPlayerName; 
+            }
+        });
+
+        async function handleAuthAction(action) {
+            const email = DOM.$('#auth-email').value;
+            const password = DOM.$('#auth-password').value;
+
+            if (action === 'logout') {
+                await auth.signOut();
+                displayGameMessage('Logged out from Firebase.', 'status');
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    // Inform server that this client is no longer authenticated
+                    // Server side should manage this via ws.on('close') on refresh/disconnect
+                    // For explicit logout, we just clear client-side state.
+                }
+                return;
+            }
+
+            if (!email || !password) {
+                displayGameMessage('Please enter both email and password for authentication.', 'error');
+                return;
+            }
+
+            try {
+                if (action === 'login') {
+                    await auth.signInWithEmailAndPassword(email, password);
+                    displayGameMessage('Logged in successfully!', 'status');
+                } else if (action === 'register') {
+                    await auth.createUserWithEmailAndPassword(email, password);
+                    displayGameMessage('Registered and logged in successfully!', 'status');
+                }
+            } catch (error) {
+                displayGameMessage(`Authentication error: ${error.message}`, 'error');
+            }
         }
 
         // --- WebSocket Client Logic ---
@@ -1659,8 +1800,14 @@
             ws.onopen = () => {
                 displayGameMessage('Connected to game server.', 'status');
                 DOM.$('#lobby-status').textContent = 'Connected to server.';
-                // Request lobby update on connection
-                ws.send(JSON.stringify({ type: 'GET_LOBBY_UPDATE' }));
+                // If already authenticated, send Firebase ID to server
+                if (myFirebaseId) {
+                    sendAuthIdToWebSocketServer();
+                } else {
+                    // Otherwise, the server will request it with 'REQUEST_AUTH_ID'
+                    // For now, request lobby update immediately (server will filter by auth)
+                    ws.send(JSON.stringify({ type: 'GET_LOBBY_UPDATE' }));
+                }
             };
 
             ws.onmessage = event => {
@@ -1671,9 +1818,15 @@
                     case 'CONNECTED':
                         myClientId = message.clientId;
                         displayGameMessage(`Assigned Client ID: ${myClientId}`, 'status');
-                        // Set default player name if not already set
-                        if (!DOM.$('#my-player-name').value) {
-                            DOM.$('#my-player-name').value = myPlayerName;
+                        break;
+                    case 'REQUEST_AUTH_ID':
+                        // Server requests Firebase Auth ID; send if available
+                        if (myFirebaseId) {
+                            sendAuthIdToWebSocketServer();
+                        } else {
+                            displayGameMessage('Server requested authentication. Please login or register.', 'status');
+                            // Optionally, navigate user to lobby or auth section.
+                            showSection('online-lobby-section');
                         }
                         break;
                     case 'LOBBY_UPDATE':
@@ -1685,27 +1838,30 @@
                         displayGameMessage(`Game ${currentOnlineGameId} (${currentOnlineGameType}) created. Waiting for players...`, 'status');
                         showGameSectionForOnlinePlay(currentOnlineGameType);
                         // Update local game state with the initial state from server
-                        updateLocalGameState(message.game.state[currentOnlineGameType]);
+                        updateLocalGameState(message.game.state);
                         break;
                     case 'GAME_JOINED':
-                        currentOnlineGameId = message.gameId || message.game.id; // Use game.id if gameId isn't top-level
+                        currentOnlineGameId = message.game.id; // Server now sends game.id
                         currentOnlineGameType = message.game.type;
                         displayGameMessage(`Joined game ${currentOnlineGameId} (${currentOnlineGameType}).`, 'status');
                         showGameSectionForOnlinePlay(currentOnlineGameType);
                         // Update local game state with the initial state from server
-                        updateLocalGameState(message.game.state[currentOnlineGameType]);
+                        updateLocalGameState(message.game.state);
                         break;
                     case 'PLAYER_JOINED':
                         displayGameMessage(`${message.newPlayerId} joined game ${message.game.id}. Current players: ${Object.keys(message.game.players).length}/${message.game.maxPlayers}`, 'status');
-                        // Re-render relevant UI to show new player (e.g., Monopoly holdings, Uno player cards)
-                        updateLocalGameState(message.game.state[message.game.type]);
+                        updateLocalGameState(message.game.state); // Update local game state to reflect new players
+                        break;
+                    case 'PLAYER_RECONNECTED':
+                        displayGameMessage(`${message.clientId} reconnected to game ${message.game.id}.`, 'status');
+                        updateLocalGameState(message.game.state);
                         break;
                     case 'PLAYER_LEFT':
                         displayGameMessage(`${message.clientId} left game ${message.game.id}.`, 'status');
-                        // Update player display
-                        updateLocalGameState(message.game.state[message.game.type]);
-                        if (Object.keys(message.game.players).length === 0) {
-                            displayGameMessage(`Game ${message.game.id} disbanded. Returning to lobby.`, 'status');
+                        updateLocalGameState(message.game.state);
+                        // If all players left, or I'm the only one left and game ended, go to lobby
+                        if (Object.keys(message.game.players).length === 0 || message.game.status === 'finished') {
+                            displayGameMessage(`Game ${message.game.id} disbanded or finished. Returning to lobby.`, 'status');
                             currentOnlineGameId = null;
                             currentOnlineGameType = null;
                             showSection('online-lobby-section');
@@ -1713,15 +1869,11 @@
                         break;
                     case 'GAME_STARTED':
                         displayGameMessage(`Game ${message.gameId} has started!`, 'status');
-                        // The server might send the initial state here too, or it's part of GAME_JOINED/CREATED
-                        // Ensure local game state is updated.
-                        updateLocalGameState(message.game.state[message.game.type]);
+                        updateLocalGameState(message.game.state);
                         break;
                     case 'GAME_STATE_UPDATE':
-                        // This is the main update for ongoing game play
                         if (message.gameId === currentOnlineGameId) {
-                            // The server sends the entire game state for the current game
-                            updateLocalGameState(message.state[currentOnlineGameType]);
+                            updateLocalGameState(message.state);
                             // Also display any specific move message from server
                             if (message.moveResult && message.moveResult.message) {
                                 updateGameStatusMessage(message.moveResult.message, currentOnlineGameType);
@@ -1753,20 +1905,39 @@
             };
 
             ws.onclose = () => {
-                displayGameMessage('Disconnected from game server.', 'error');
-                DOM.$('#lobby-status').textContent = 'Disconnected. Try refreshing.';
+                displayGameMessage('Disconnected from game server. Attempting to reconnect...', 'error');
+                DOM.$('#lobby-status').textContent = 'Disconnected. Attempting to reconnect...';
                 myClientId = null;
+                // Try to reconnect after a delay
+                setTimeout(initWebSocket, 3000); 
             };
 
             ws.onerror = error => {
                 displayGameMessage(`WebSocket Error: ${error.message}`, 'error');
                 DOM.$('#lobby-status').textContent = 'Connection error.';
+                ws.close(); // Force close to trigger reconnect logic
             };
         }
 
         /**
+         * Sends the authenticated Firebase UID and player name to the WebSocket server.
+         */
+        function sendAuthIdToWebSocketServer() {
+            if (ws && ws.readyState === WebSocket.OPEN && myFirebaseId && myPlayerName) {
+                ws.send(JSON.stringify({
+                    type: 'AUTH_ID_RECEIVED',
+                    firebaseId: myFirebaseId,
+                    playerName: myPlayerName
+                }));
+                displayGameMessage('Sent Firebase Auth ID to server.', 'status');
+                // Now request lobby update as server is aware of our auth status
+                ws.send(JSON.stringify({ type: 'GET_LOBBY_UPDATE' }));
+            }
+        }
+
+        /**
          * Helper to show the correct game section for online play and hide setup.
-         * @param {string} gameType The type of game ('ludo', 'monopoly', etc.).
+         * @param {string} gameType === 'ludo', 'monopoly', etc.).
          */
         function showGameSectionForOnlinePlay(gameType) {
             showSection(`${gameType}-section`);
@@ -1777,18 +1948,27 @@
         /**
          * Updates the local game state object (ludo, monopoly, uno, chess) with the new state from the server
          * and triggers rendering.
-         * @param {object} newState The new game state object for the active game.
+         * @param {object} fullGameState The full game state object from the server.
          */
-        function updateLocalGameState(newState) {
+        function updateLocalGameState(fullGameState) {
             if (!currentOnlineGameType) return;
 
+            const newState = fullGameState[currentOnlineGameType];
+            if (!newState) {
+                console.error(`Received state for unknown game type: ${currentOnlineGameType}`);
+                return;
+            }
+
+            // Deep merge or assign depending on game complexity. For now, assign.
+            // This copies the entire game-specific state from the server.
+            window[currentOnlineGameType] = newState; // Assign to global game object (e.g., `uno = newState`)
+
+            // Trigger rendering for the current game type
             switch (currentOnlineGameType) {
                 case 'ludo':
-                    Object.assign(ludo, newState);
                     renderLudoBoard();
                     break;
                 case 'monopoly':
-                    Object.assign(monopoly, newState);
                     renderMonopolyBoard();
                     updateMonopolyPlayerHoldings();
                     // Special case for monopoly popup: if state is 'buying' or 'chance'/'chest', open popup for human
@@ -1816,7 +1996,6 @@
                     }
                     break;
                 case 'uno':
-                    Object.assign(uno, newState);
                     renderUnoGame();
                     // Uno specific UI logic
                     if (uno.state === 'color_select' && myClientId === uno.players[uno.currentPlayerIndex].id) {
@@ -1832,7 +2011,6 @@
                     }
                     break;
                 case 'chess':
-                    Object.assign(chess, newState);
                     renderChessBoard();
                     break;
             }
@@ -1855,12 +2033,12 @@
          */
         function updateCurrentPlayerTurn(currentPlayerId, gameType) {
             const playerInfoEl = DOM.$(`#${gameType}-current-player-name`);
-            if (playerInfoEl) {
-                const currentPlayer = (gameType === 'ludo' && ludo.players) ? ludo.players.find(p => p.id === currentPlayerId) :
-                                      (gameType === 'monopoly' && monopoly.players) ? monopoly.players.find(p => p.id === currentPlayerId) :
-                                      (gameType === 'uno' && uno.players) ? uno.players.find(p => p.id === currentPlayerId) :
-                                      (gameType === 'chess' && chess.players) ? chess.players.find(p => p.id === currentPlayerId) : null;
+            const gameData = window[gameType]; // Get the current game state object
+            if (!gameData || !gameData.players) return;
+
+            const currentPlayer = gameData.players.find(p => p.id === currentPlayerId);
                 
+            if (playerInfoEl) {
                 playerInfoEl.textContent = currentPlayer ? currentPlayer.name : 'Unknown Player';
 
                 // General controls enable/disable based on turn
@@ -1879,9 +2057,11 @@
                 // For Uno
                 if (gameType === 'uno') {
                     DOM.$('#uno-draw-pile').style.pointerEvents = isMyTurn && (uno.state === 'playing' || uno.state === 'await_draw_decision') ? 'auto' : 'none';
-                    DOM.$('#uno-draw-pile').style.opacity = isMyTurn && (uno.state === 'playing' || uno.state === 'await_draw_decision') ? '1' : '0.6';
-                    DOM.$('#uno-declare-button').disabled = !isMyTurn || uno.players.find(p => p.id === myClientId)?.hand.length !== 1 || uno.unoDeclared;
-                    // Card playability handled by renderUnoGame and isValidUnoPlay
+                    DOM.$('#uno-draw-pile').classList.toggle('active', isMyTurn && (uno.state === 'playing' || uno.state === 'await_draw_decision'));
+
+                    // UNO button
+                    DOM.$('#uno-declare-button').disabled = !isMyTurn || uno.players.find(p => p.id === myClientId)?.hand.length !== 1 || uno.players.find(p => p.id === myClientId)?.unoDeclared;
+                    // Card playability handled by renderUnoGame (via classes on cards)
                 }
                 // For Chess
                 if (gameType === 'chess') {
@@ -1928,6 +2108,10 @@
                 myPlayerName = nameInput.value.trim();
                 localStorage.setItem('myPlayerName', myPlayerName);
                 displayGameMessage(`Your name is set to: ${myPlayerName}`, 'status');
+                // If connected and authenticated, tell server about name change
+                if (ws && ws.readyState === WebSocket.OPEN && myFirebaseId) {
+                    sendAuthIdToWebSocketServer(); // Resend auth ID with new player name
+                }
             } else {
                 displayGameMessage("Please enter a valid player name.", 'error');
             }
@@ -1941,6 +2125,10 @@
                 displayGameMessage('Not connected to server. Please wait or refresh.', 'error');
                 return;
             }
+            if (!myFirebaseId) {
+                displayGameMessage('Please log in to Firebase first.', 'error');
+                return;
+            }
             if (!myPlayerName || myPlayerName === 'Guest') {
                 displayGameMessage('Please set your player name first.', 'error');
                 return;
@@ -1952,7 +2140,6 @@
             ws.send(JSON.stringify({
                 type: 'CREATE_GAME',
                 gameType: gameType,
-                playerName: myPlayerName,
                 maxPlayers: maxPlayers
             }));
             displayGameMessage(`Requesting to create ${gameType} game...`, 'status');
@@ -1967,6 +2154,10 @@
                 displayGameMessage('Not connected to server. Please wait or refresh.', 'error');
                 return;
             }
+            if (!myFirebaseId) {
+                displayGameMessage('Please log in to Firebase first.', 'error');
+                return;
+            }
             if (!myPlayerName || myPlayerName === 'Guest') {
                 displayGameMessage('Please set your player name first.', 'error');
                 return;
@@ -1974,7 +2165,6 @@
             ws.send(JSON.stringify({
                 type: 'JOIN_GAME',
                 gameId: gameId,
-                playerName: myPlayerName
             }));
             displayGameMessage(`Requesting to join game ${gameId}...`, 'status');
         }
@@ -2017,15 +2207,15 @@
         }
 
         function sendLudoSelectToken(tokenEl) {
-            if (currentPlayMode === 'online' && myClientId === ludo.players[ludo.currentPlayerIndex].id) {
+            // For online mode, this is purely client-side visual. Server will confirm.
+            if (currentPlayMode === 'online') {
                 const tokenId = parseInt(tokenEl.dataset.tokenId);
-                ws.send(JSON.stringify({
-                    type: 'MAKE_MOVE',
-                    gameId: currentOnlineGameId,
-                    gameType: 'ludo',
-                    payload: { action: 'selectToken', tokenId: tokenId }
-                }));
-                // Client-side visual selection, will be confirmed by server state update
+                const currentPlayer = ludo.players.find(p => p.id === myClientId);
+                if (!currentPlayer || ludo.players[ludo.currentPlayerIndex].id !== myClientId) {
+                    displayGameMessage("It's not your turn!", 'error');
+                    return;
+                }
+                 // Client-side visual selection, will be confirmed by server state update
                 if (ludo.selectedToken) {
                     const prevSelectedEl = DOM.$(`[data-player-id="${ludo.selectedToken.playerId}"][data-token-id="${ludo.selectedToken.tokenId}"]`);
                     if (prevSelectedEl) prevSelectedEl.classList.remove('selected');
@@ -2126,7 +2316,7 @@
                     payload: { action: 'drawCard' }
                 }));
             } else if (currentPlayMode === 'local') {
-                DOM.$('#uno-draw-pile').onclick(); // Trigger local logic directly
+                unoLocalDrawCardAction(); // Trigger local logic directly
             } else {
                 displayGameMessage("It's not your turn or you are not in an online game.", 'error');
             }
@@ -2140,7 +2330,7 @@
                     payload: { action: 'playCard', card: cardToPlay, handIndex: handIndex }
                 }));
             } else if (currentPlayMode === 'local') {
-                playUnoCard(cardToPlay, handIndex);
+                playUnoCardLocal(cardToPlay, handIndex);
             } else {
                 displayGameMessage("It's not your turn or you are not in an online game.", 'error');
             }
@@ -2154,7 +2344,7 @@
                     payload: { action: 'selectWildColor', color: color }
                 }));
             } else if (currentPlayMode === 'local') {
-                selectUnoWildColor(color);
+                selectUnoWildColorLocal(color);
             } else {
                 displayGameMessage("It's not your turn or you are not in an online game.", 'error');
             }
@@ -2168,7 +2358,7 @@
                     payload: { action: 'declareUno' }
                 }));
             } else if (currentPlayMode === 'local') {
-                declareUno();
+                declareUnoLocal();
             } else {
                 displayGameMessage("It's not your turn or you are not in an online game.", 'error');
             }
@@ -2182,7 +2372,7 @@
                     payload: { action: 'endTurn' }
                 }));
             } else if (currentPlayMode === 'local') {
-                nextUnoTurn(); // Directly calls next turn in local logic
+                nextUnoTurnLocal(); // Directly calls next turn in local logic
             } else {
                 displayGameMessage("It's not your turn or you are not in an online game.", 'error');
             }
@@ -2199,7 +2389,7 @@
                     payload: { action: 'movePiece', sr: sr, sc: sc, tr: tr, tc: tc, promoteTo: promoteTo }
                 }));
             } else if (currentPlayMode === 'local') {
-                moveChessPiece(sr, sc, tr, tc); // Directly calls local logic
+                moveChessPieceLocal(sr, sc, tr, tc); // Directly calls local logic
             } else {
                 displayGameMessage("It's not your turn or you are not in an online game.", 'error');
             }
@@ -2281,20 +2471,16 @@
 
             // Initial DOM modifications for online play in game sections
             // Modify chess.board's cell onclick assignment for online vs local
-            // This needs to be dynamic in renderChessBoard. For now, it will use the currentPlayMode global.
+            // This is handled dynamically in renderChessBoard.
         });
 
 
         // ===========================================================================================
-        // LUDO GAME
+        // LUDO GAME (LOCAL PLAY - Will be updated for server in future steps)
         // ===========================================================================================
         const LUDO_BOARD_SIZE = 15;
         const LUDO_COLORS = ['red', 'blue', 'green', 'yellow'];
         const LUDO_TOKENS_PER_PLAYER = 4;
-
-        // The `ludo` object is now updated by `updateLocalGameState` from the server for online play.
-        // For local play, it's modified directly.
-        // let ludo = { ... }; // Already declared globally
 
         const LUDO_PATH_COORDS = [
             // Red's actual start is {r:6,c:1} -- this is path index 0
@@ -2356,7 +2542,7 @@
             } else if (position >= mainPathLength && position < finishPosition) { // On player's home path
                 const homePathIndex = position - mainPathLength;
                 return LUDO_PLAYER_HOME_PATHS[playerColor][homePathIndex];
-            } else if (position === finishPosition) { // Finished center
+            } else if (position === finishPosition) { // Exactly lands on finish center
                 return LUDO_FINISH_CENTER;
             }
             return null; // Should not happen
@@ -2474,6 +2660,8 @@
                     currentPlayerHomeEl.classList.add('current-player');
                 }
             }
+            // Update dice display
+            DOM.$('#ludo-dice').textContent = ludo.diceRoll > 0 ? ludo.diceRoll : 'Roll Dice';
         }
 
         /**
@@ -2494,7 +2682,7 @@
             for (let i = 1; i <= LUDO_COLORS.length; i++) {
                 const name = DOM.$(`#ludo-player${i}-name`).value || `Player ${i}`;
                 const mode = DOM.$(`input[name="ludo-player${i}-mode"]:checked`).value;
-                initialPlayers.push({ name, mode, color: LUDO_COLORS[i-1] });
+                initialPlayers.push({ name, mode, color: LUDO_COLORS[i-1], id: `p${i}` }); // Added ID for local consistency
             }
 
             initialPlayers.forEach((p, i) => {
@@ -2838,7 +3026,7 @@
         // --- PASTE MONOPOLY GAME JAVASCRIPT HERE ---
 
         // ===========================================================================================
-        // MONOPOLY GAME (Advanced Simplified)
+        // MONOPOLY GAME (Advanced Simplified - LOCAL PLAY - Will be updated for server in future steps)
         // ===========================================================================================
         // let monopoly = { ... }; // Declared globally
 
@@ -2873,6 +3061,8 @@
             { name: "Ventnor Avenue", type: "property", group: "yellow", price: 260, rent: [22, 110, 330, 800, 975, 1150], houseCost: 150 }, // 27
             { name: "Water Works", type: "utility", group: "utility", price: 150, rent: [4, 10] }, // 28
             { name: "Marvin Gardens", type: "property", group: "yellow", price: 280, rent: [24, 120, 360, 850, 1025, 1200], houseCost: 150 }, // 29
+        
+        // ... (remaining MONOPOLY_BOARD_SETUP continued)
             { name: "Go To Jail", type: "go-to-jail", group: "corner" }, // 30
             { name: "Pacific Avenue", type: "property", group: "green", price: 300, rent: [26, 130, 390, 900, 1100, 1275], houseCost: 200 }, // 31
             { name: "North Carolina Avenue", type: "property", group: "green", price: 300, rent: [26, 130, 390, 900, 1100, 1275], houseCost: 200 }, // 32
@@ -3566,7 +3756,7 @@
                     updateMonopolyStatus(`${currentPlayer.name} (Bot) bought ${square.name} and rolled doubles, rolling again!`);
                     setTimeout(handleMonopolyTurnLocal, 1500);
                 } else {
-                    setTimeout(monopolyEndTurn(), 1000); // Call local end turn
+                    setTimeout(monopolyEndTurn, 1000); // Call local end turn
                 }
             } else {
                 updateMonopolyStatus(`${currentPlayer.name} (Bot) decided not to buy or couldn't afford ${square.name}.`);
@@ -3575,7 +3765,7 @@
                     updateMonopolyStatus(`${currentPlayer.name} (Bot) rolled doubles, rolling again!`);
                     setTimeout(handleMonopolyTurnLocal, 1500);
                 } else {
-                    setTimeout(monopolyEndTurn(), 1000); // Call local end turn
+                    setTimeout(monopolyEndTurn, 1000); // Call local end turn
                 }
             }
         }
@@ -3660,7 +3850,7 @@
         // --- PASTE UNO GAME JAVASCRIPT HERE ---
 
         // ===========================================================================================
-        // UNO GAME
+        // UNO GAME (LOCAL PLAY - Client-side implementation mirroring server logic)
         // ===========================================================================================
         const UNO_COLORS = ['red', 'blue', 'green', 'yellow'];
         const UNO_NUMBERS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
@@ -3670,11 +3860,17 @@
 
         // let uno = { ... }; // Declared globally
 
+        /**
+         * Represents an Uno card.
+         * @class UnoCard
+         * @param {string} color The color of the card ('red', 'blue', 'green', 'yellow', 'wild').
+         * @param {string} value The value of the card ('0'-'9', 'Skip', 'Reverse', 'Draw Two', 'Wild', 'Wild Draw Four').
+         */
         class UnoCard {
             constructor(color, value) {
                 this.color = color;
                 this.value = value;
-                this.wildColor = null;
+                this.wildColor = null; // Used for played wild cards to indicate chosen color
             }
 
             toString() {
@@ -3693,7 +3889,7 @@
          * Creates a standard Uno deck.
          * @returns {Array<UnoCard>} A newly created, unshuffled deck.
          */
-        function createUnoDeck() {
+        function createUnoDeckLocal() {
             const newDeck = [];
             UNO_COLORS.forEach(color => {
                 newDeck.push(new UnoCard(color, '0'));
@@ -3718,7 +3914,7 @@
          * @param {Array<UnoCard>} deck The deck to shuffle.
          * @returns {Array<UnoCard>} The shuffled deck.
          */
-        function shuffleUnoDeck(deck) {
+        function shuffleUnoDeckLocal(deck) {
             for (let i = deck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -3736,13 +3932,13 @@
                 deck: [],
                 discardPile: [],
                 direction: 1,
-                state: 'playing',
+                state: 'playing', // 'playing', 'color_select', 'await_draw_decision', 'game_over'
                 pendingDraw: 0,
-                unoDeclared: false,
-                lastPlayerToPlay: null
+                lastPlayerToPlay: null, // Track last player for UNO call penalty
+                winner: null
             };
 
-            uno.deck = shuffleUnoDeck(createUnoDeck());
+            uno.deck = shuffleUnoDeckLocal(createUnoDeckLocal());
             uno.discardPile = [];
 
             const initialPlayers = [];
@@ -3750,7 +3946,7 @@
                 const nameInput = DOM.$(`#uno-player${i}-name`);
                 const modeRadios = DOM.$(`input[name="uno-player${i}-mode"]:checked`);
                 if (nameInput && nameInput.value && modeRadios && modeRadios.value) {
-                    initialPlayers.push({ name: nameInput.value, mode: modeRadios.value });
+                    initialPlayers.push({ id: `p${i}`, name: nameInput.value, mode: modeRadios.value });
                 }
             }
 
@@ -3760,32 +3956,44 @@
                 return;
             }
 
-            const UNO_PLAYER_COLORS = ['red', 'blue', 'green', 'yellow'];
             initialPlayers.forEach((p, i) => {
                 uno.players.push({
-                    id: `p${i + 1}`,
+                    id: p.id,
                     name: p.name,
                     mode: p.mode,
                     hand: [],
-                    color: UNO_PLAYER_COLORS[i]
+                    unoDeclared: false,
+                    color: UNO_COLORS[i % UNO_COLORS.length] // Assign initial color for display
                 });
             });
 
             uno.players.forEach(player => {
                 for (let i = 0; i < UNO_INITIAL_HAND_SIZE; i++) {
-                    const card = drawUnoCardFromDeckLocal(null);
+                    const card = unoLocalDrawCardFromDeck(null);
                     if (card) player.hand.push(card);
                 }
             });
 
             let startCard;
+            let attempts = 0;
+            const MAX_START_CARD_ATTEMPTS = 20;
             do {
-                startCard = drawUnoCardFromDeckLocal(null);
-                if (startCard && startCard.isWild()) {
-                    uno.deck.push(startCard);
-                    uno.deck = shuffleUnoDeck(uno.deck);
+                startCard = unoLocalDrawCardFromDeck(null);
+                attempts++;
+                if (!startCard || attempts >= MAX_START_CARD_ATTEMPTS) {
+                    console.error("Failed to draw a valid non-action/non-wild starting card for Uno, using default number card.");
+                    startCard = new UnoCard('red', '1'); // Fallback
+                    break;
                 }
-            } while (!startCard || startCard.isWild());
+                if (startCard.isWild() || UNO_SPECIAL_CARDS.includes(startCard.value)) {
+                    uno.deck.unshift(startCard); // Put it back at the start of the deck
+                    // A quick re-shuffle after putting back to avoid drawing it immediately again
+                    for (let i = uno.deck.length - 1; i > 0; i--) { 
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [uno.deck[i], uno.deck[j]] = [uno.deck[j], uno.deck[i]];
+                    }
+                }
+            } while (startCard.isWild() || UNO_SPECIAL_CARDS.includes(startCard.value));
             
             if (startCard) {
                 uno.discardPile.push(startCard);
@@ -3808,7 +4016,7 @@
             if (uno.discardPile.length > 0) {
                 const topCard = uno.discardPile[uno.discardPile.length - 1];
                 const cardEl = createUnoCardElement(topCard, false);
-                cardEl.style.transform = `rotate(${(Math.random() * 20) - 10}deg)`;
+                cardEl.style.setProperty('--card-rotation', `${(Math.random() * 20) - 10}deg`); // Apply random rotation
                 discardPileEl.appendChild(cardEl);
             } else {
                 discardPileEl.textContent = 'Discard Pile';
@@ -3816,27 +4024,34 @@
 
             const drawPileEl = DOM.$('#uno-draw-pile');
             drawPileEl.textContent = `Draw Pile (${uno.deck.length})`;
-            drawPileEl.classList.toggle('active', (currentPlayMode === 'online' && myClientId === uno.players[uno.currentPlayerIndex]?.id && (uno.state === 'playing' || (uno.state === 'pending_draw_action' && uno.pendingDraw > 0))) || (currentPlayMode === 'local' && (uno.state === 'playing' || (uno.state === 'pending_draw_action' && uno.pendingDraw > 0))) );
+            
+            // Toggle active class for draw pile based on turn and play mode
+            const currentPlayerId = uno.players[uno.currentPlayerIndex]?.id;
+            let isMyTurn = (currentPlayMode === 'local') || (currentPlayMode === 'online' && myClientId === currentPlayerId); // Declared once with let
+            const canDraw = isMyTurn && uno.state !== 'game_over' && uno.state !== 'color_select'; 
+            drawPileEl.classList.toggle('active', canDraw);
 
-            const currentPlayer = uno.players[uno.currentPlayerIndex];
+
+            const currentPlayer = uno.players.find(p => p.id === (currentPlayMode === 'local' ? uno.players[uno.currentPlayerIndex].id : myClientId));
             const handEl = DOM.$('#uno-current-player-hand');
             handEl.innerHTML = '';
 
-            if (currentPlayer && (currentPlayMode === 'local' || myClientId === currentPlayer.id)) { // Only show current player's hand (or my hand if online)
+            if (currentPlayer) { // Only show current player's hand (or my hand if online)
                 currentPlayer.hand.forEach((card, index) => {
                     const cardEl = createUnoCardElement(card, true);
                     cardEl.dataset.handIndex = index;
                     if (currentPlayMode === 'online') {
                         cardEl.onclick = () => sendUnoPlayCard(card, index);
                     } else {
-                        cardEl.onclick = () => playUnoCard(card, index); // Local play function
+                        cardEl.onclick = () => playUnoCardLocal(card, index); // Local play function
                     }
                     handEl.appendChild(cardEl);
                 });
             } else {
                 // If not current player's hand in online mode, show back of cards
-                handEl.innerHTML = `<p>Not your turn or not your hand. ${currentPlayer ? currentPlayer.name : 'Another player'}'s turn.</p>`;
-                const numCards = currentPlayer ? currentPlayer.hand.length : 0;
+                const currentOnlinePlayerInGame = uno.players.find(p => p.id === currentOnlineGameId);
+                const numCards = currentOnlinePlayerInGame ? currentOnlinePlayerInGame.hand.length : 0;
+                handEl.innerHTML = `<p>Not your turn or not your hand. ${uno.players[uno.currentPlayerIndex].name}'s turn.</p>`;
                 for(let i=0; i<numCards; i++) {
                     const backCard = DOM.create('div', ['uno-card', 'back-of-card']); // Apply special style for back
                     handEl.appendChild(backCard);
@@ -3844,7 +4059,7 @@
             }
 
 
-            if (currentPlayMode === 'local' || (currentPlayMode === 'online' && myClientId === currentPlayer.id)) {
+            if (currentPlayer && (currentPlayMode === 'local' || myClientId === currentPlayer.id)) {
                 const topCard = uno.discardPile[uno.discardPile.length - 1];
                 const isDrawActionPending = uno.pendingDraw > 0;
                 
@@ -3854,14 +4069,15 @@
 
                     let canPlay = false;
 
-                    if (isDrawActionPending) {
-                        if ((card.value === topCard.value && card.value === 'Draw Two') || card.value === 'Wild Draw Four') {
-                            canPlay = true;
-                        } else if (card.value === 'Wild Draw Four') {
-                            canPlay = true;
-                        }
+                    if (uno.state === 'color_select') { // Cannot play any card while waiting for color selection
+                        canPlay = false;
+                    } else if (isDrawActionPending) {
+                        // Only Draw Two or Wild Draw Four can be played to stack
+                        const canStackDrawTwo = (card.value === 'Draw Two' && topCard.value === 'Draw Two');
+                        const canStackWildDrawFour = (card.isWild() && card.value === 'Wild Draw Four');
+                        canPlay = canStackDrawTwo || canStackWildDrawFour;
                     } else {
-                        canPlay = isValidUnoPlay(card);
+                        canPlay = isValidUnoPlayLocal(card);
                     }
 
                     if (canPlay) {
@@ -3884,10 +4100,13 @@
                 playerInfoEl.appendChild(playerCard);
             });
 
-            const isMyTurn = (currentPlayMode === 'online' && myClientId === currentPlayer.id) || currentPlayMode === 'local';
-            DOM.$('#uno-declare-button').style.display = isMyTurn && currentPlayer.hand.length === 2 && !uno.unoDeclared ? 'block' : 'none';
-            DOM.$('#uno-declare-button').classList.toggle('active', currentPlayer.hand.length === 2);
+            // UNO! button visibility
+            const currentTurnPlayer = uno.players[uno.currentPlayerIndex];
+            // `isMyTurn` is already set above, no redeclaration needed
+            DOM.$('#uno-declare-button').style.display = isMyTurn && currentPlayer?.hand.length === 1 && !currentPlayer.unoDeclared ? 'block' : 'none';
+            DOM.$('#uno-declare-button').classList.toggle('active', currentPlayer?.hand.length === 1);
 
+            // End Turn After Draw button visibility
             const endDrawTurnBtn = DOM.$('#uno-end-draw-turn-button');
             if (endDrawTurnBtn) {
                 if (isMyTurn && uno.state === 'await_draw_decision') {
@@ -3900,6 +4119,14 @@
             if (uno.state !== 'color_select' || !isMyTurn) {
                 DOM.$('#uno-color-picker').style.display = 'none';
             }
+            // If the game ended, disable draw pile and buttons
+            if (uno.state === 'game_over') {
+                 DOM.$('#uno-draw-pile').classList.remove('active');
+                 DOM.$('#uno-draw-pile').style.pointerEvents = 'none';
+                 DOM.$('#uno-declare-button').style.display = 'none';
+                 DOM.$('#uno-color-picker').style.display = 'none';
+                 DOM.$('#uno-end-draw-turn-button').style.display = 'none';
+            }
         }
 
         /**
@@ -3909,21 +4136,23 @@
          * @returns {HTMLElement} The card's DOM element.
          */
         function createUnoCardElement(card, interactive) {
-            const cardEl = DOM.create('div', ['uno-card', card.color]);
-            cardEl.dataset.cardColor = card.color;
-            cardEl.dataset.cardValue = card.value;
+            // Create a copy to prevent modifying the original card object reference when setting rotation
+            const cardCopy = { ...card }; 
+            const cardEl = DOM.create('div', ['uno-card', cardCopy.color]);
+            cardEl.dataset.cardColor = cardCopy.color;
+            cardEl.dataset.cardValue = cardCopy.value;
 
-            if (card.isWild()) {
-                if (card.wildColor) {
+            if (cardCopy.isWild()) {
+                if (cardCopy.wildColor) {
                     cardEl.style.backgroundImage = 'none';
-                    cardEl.style.backgroundColor = card.wildColor;
-                    cardEl.innerHTML = `<div class="card-value">${card.value.replace('Wild ', '+')}</div>`;
-                    cardEl.innerHTML += `<div class="card-color-indicator" style="color:rgba(0,0,0,0.5);">${card.wildColor}</div>`;
+                    cardEl.style.backgroundColor = cardCopy.wildColor;
+                    cardEl.innerHTML = `<div class="card-value">${cardCopy.value.replace('Wild ', '')}</div>`;
+                    cardEl.innerHTML += `<div class="card-color-indicator" style="color:rgba(0,0,0,0.5);">${cardCopy.wildColor}</div>`;
                 } else {
-                     cardEl.innerHTML = `<div class="card-value">${card.value.replace('Wild ', '+')}</div>`;
+                     cardEl.innerHTML = `<div class="card-value">${cardCopy.value.replace('Wild ', '')}</div>`;
                 }
             } else {
-                cardEl.innerHTML = `<div class="card-value">${card.value}</div>`;
+                cardEl.innerHTML = `<div class="card-value">${cardCopy.value}</div>`;
             }
             if (!interactive) {
                 cardEl.style.cursor = 'default';
@@ -3933,11 +4162,11 @@
 
         /**
          * Draws cards from the deck (LOCAL PLAY).
-         * @param {object|null} player The player to draw for.
+         * @param {object|null} player The player to draw for. If null, cards are drawn from deck but not added to a hand.
          * @param {number} count Number of cards to draw.
          * @returns {UnoCard|Array<UnoCard>|null} The drawn card(s) or null if unable to draw.
          */
-        function drawUnoCardFromDeckLocal(player, count = 1) {
+        function unoLocalDrawCardFromDeck(player, count = 1) {
             const drawnCards = [];
             for (let i = 0; i < count; i++) {
                 if (uno.deck.length === 0) {
@@ -3946,7 +4175,7 @@
                         return null;
                     }
                     const topCard = uno.discardPile.pop();
-                    uno.deck = shuffleUnoDeck(uno.discardPile);
+                    uno.deck = shuffleUnoDeckLocal(uno.discardPile);
                     uno.discardPile = [topCard];
                     updateUnoStatus("Shuffling discard pile into new deck.");
                 }
@@ -3967,11 +4196,11 @@
         }
 
         /**
-         * Checks if a given card is valid to play on the current discard pile.
+         * Checks if a given card is valid to play on the current discard pile (LOCAL PLAY).
          * @param {UnoCard} card The card to check.
          * @returns {boolean} True if the card can be played, false otherwise.
          */
-        function isValidUnoPlay(card) {
+        function isValidUnoPlayLocal(card) {
             const topCard = uno.discardPile[uno.discardPile.length - 1];
             const matchColor = topCard.isWild() && topCard.wildColor ? topCard.wildColor : topCard.color;
 
@@ -3982,25 +4211,60 @@
         }
 
         /**
+         * Handles a player clicking the draw pile button (LOCAL PLAY).
+         */
+        function unoLocalDrawCardAction() { // For local play
+            const currentPlayer = uno.players[uno.currentPlayerIndex];
+            if (currentPlayer.mode === 'bot' || uno.state === 'game_over' || uno.state === 'color_select') return;
+
+            // Strict check: if player has playable cards, they should play, not draw.
+            const canPlayAnyCard = currentPlayer.hand.some(card => isValidUnoPlayLocal(card));
+            if (canPlayAnyCard && uno.pendingDraw === 0 && uno.state === 'playing') {
+                updateUnoStatus("You have playable cards. You don't have to draw unless you choose to (which ends your turn).");
+                // Allow drawing, but it implicitly means ending turn if not played
+            }
+
+            const numCardsToDraw = uno.pendingDraw > 0 ? uno.pendingDraw : 1;
+            const drawnCards = unoLocalDrawCardFromDeck(currentPlayer, numCardsToDraw);
+            if (drawnCards) {
+                updateUnoStatus(`${currentPlayer.name} drew ${Array.isArray(drawnCards) ? drawnCards.length : 1} card(s).`);
+                uno.pendingDraw = 0; // Reset pending draw
+                uno.state = 'await_draw_decision'; // Allow player to play drawn card or end turn
+                renderUnoGame();
+                if (!Array.isArray(drawnCards) && !isValidUnoPlayLocal(drawnCards)) {
+                    // If only one card drawn and it's not playable, automatically end turn
+                    updateUnoStatus("No playable cards drawn. Ending turn.");
+                    setTimeout(nextUnoTurnLocal, 1000);
+                } else if (Array.isArray(drawnCards) && !drawnCards.some(c => isValidUnoPlayLocal(c))) {
+                    updateUnoStatus("No playable cards drawn. Ending turn.");
+                    setTimeout(nextUnoTurnLocal, 1000);
+                }
+            }
+        }
+
+
+        /**
          * Handles a player attempting to play a card (LOCAL PLAY).
          * @param {UnoCard} cardToPlay The card object to play.
          * @param {number} handIndex The index of the card in the player's hand.
          */
-        function playUnoCard(cardToPlay, handIndex) { // LOCAL PLAY
+        function playUnoCardLocal(cardToPlay, handIndex) { // LOCAL PLAY
             const currentPlayer = uno.players[uno.currentPlayerIndex];
-            if (currentPlayer.mode === 'bot') return;
+            if (currentPlayer.mode === 'bot' || uno.state === 'game_over') return;
+            if (uno.state === 'color_select') {
+                updateUnoStatus("Please select a wild card color first!");
+                return;
+            }
 
             if (uno.pendingDraw > 0) {
                 const topCard = uno.discardPile[uno.discardPile.length - 1];
-                if ((cardToPlay.value === 'Draw Two' && topCard.value === 'Draw Two') || 
-                    (cardToPlay.value === 'Wild Draw Four')) {
-                } else {
-                    updateUnoStatus(`${currentPlayer.name}, you must draw ${uno.pendingDraw} cards first or play a matching Draw card.`);
+                const canStackDrawTwo = (cardToPlay.value === 'Draw Two' && topCard.value === 'Draw Two');
+                const canStackWildDrawFour = (cardToPlay.isWild() && cardToPlay.value === 'Wild Draw Four');
+                if (!canStackDrawTwo && !canStackWildDrawFour) {
+                    updateUnoStatus(`${currentPlayer.name}, you must draw ${uno.pendingDraw} cards or play a matching Draw card.`);
                     return;
                 }
-            }
-
-            if (!isValidUnoPlay(cardToPlay) && uno.pendingDraw === 0) {
+            } else if (!isValidUnoPlayLocal(cardToPlay)) {
                 updateUnoStatus(`Cannot play ${cardToPlay.toString()}. Match color, number, or play a Wild card.`);
                 return;
             }
@@ -4012,39 +4276,61 @@
             }
 
             uno.discardPile.push(playedCard);
-            uno.lastPlayerToPlay = currentPlayer.id;
+            uno.lastPlayerToPlay = currentPlayer.id; // For UNO call penalty
             updateUnoStatus(`${currentPlayer.name} played a ${playedCard.toString()}.`);
 
-            if (currentPlayer.hand.length === 1 && !uno.unoDeclared) {
+            // Check for Uno declaration penalty (if player plays their second-to-last card and doesn't call UNO)
+            if (currentPlayer.hand.length === 0 && !currentPlayer.unoDeclared) {
+                // This means they played their *last* card and didn't call UNO. Game is over. No penalty.
+                // Penalty only applies when they have 1 card LEFT (i.e. play their second-to-last)
+            } else if (currentPlayer.hand.length === 1 && !currentPlayer.unoDeclared) {
                 updateUnoStatus(`${currentPlayer.name} did not declare UNO! Drawing 2 cards as penalty.`);
-                drawUnoCardFromDeckLocal(currentPlayer, 2);
+                unoLocalDrawCardFromDeck(currentPlayer, 2);
             }
-            uno.unoDeclared = false;
+            currentPlayer.unoDeclared = false; // Reset for next turn
+
+            let needsColorSelect = false;
+            let skipNextTurn = false;
+            let forceNextDraw = 0;
 
             if (playedCard.isWild()) {
                 uno.state = 'color_select';
-                showUnoColorPicker(playedCard.value);
+                needsColorSelect = true;
                 if (playedCard.value === 'Wild Draw Four') {
                     uno.pendingDraw += 4;
+                    forceNextDraw = 4;
                 }
-                return;
+                showUnoColorPickerLocal(playedCard.value);
+                // Turn will advance after color selection
             } else if (playedCard.value === 'Skip') {
                 updateUnoStatus("Skip card played! Next player is skipped.");
-                nextUnoTurnLocal(true);
+                skipNextTurn = true;
+                nextUnoTurnLocal(skipNextTurn);
             } else if (playedCard.value === 'Reverse') {
                 uno.direction *= -1;
                 updateUnoStatus("Reverse card played! Direction changed.");
                 if (uno.players.length === 2) {
-                    nextUnoTurnLocal(true);
+                    skipNextTurn = true; // In 2-player, Reverse acts like Skip
+                    nextUnoTurnLocal(skipNextTurn);
                 } else {
                     nextUnoTurnLocal();
                 }
             } else if (playedCard.value === 'Draw Two') {
                 uno.pendingDraw += 2;
+                forceNextDraw = 2;
                 updateUnoStatus("Draw Two card played! Next player must draw 2.");
                 nextUnoTurnLocal();
             } else {
                 nextUnoTurnLocal();
+            }
+
+            // Immediately apply pending draws from Draw Two
+            if (forceNextDraw === 2 && !needsColorSelect) {
+                 const nextPlayerInTurn = uno.players[uno.currentPlayerIndex]; // The player whose turn it is now
+                 const drawnCards = unoLocalDrawCardFromDeck(uno.players[uno.currentPlayerIndex], uno.pendingDraw);
+                 updateUnoStatus(`${nextPlayerInTurn.name} drew ${drawnCards.length} cards.`);
+                 uno.pendingDraw = 0;
+                 // Turn already advanced by nextUnoTurnLocal
             }
 
             checkUnoWinLocal();
@@ -4054,7 +4340,7 @@
          * Handles the selection of a color after a Wild card is played (LOCAL PLAY).
          * @param {string} color The chosen color.
          */
-        function selectUnoWildColor(color) { // LOCAL PLAY
+        function selectUnoWildColorLocal(color) { // LOCAL PLAY
             const wildCard = uno.discardPile[uno.discardPile.length - 1];
             if (wildCard.isWild()) {
                 wildCard.wildColor = color;
@@ -4063,23 +4349,26 @@
             DOM.$('#uno-color-picker').style.display = 'none';
             uno.state = 'playing';
 
+            // Apply pending draw if it was a Wild Draw Four
             if (uno.pendingDraw > 0) {
                  const nextPlayerIndex = (uno.currentPlayerIndex + uno.direction + uno.players.length) % uno.players.length;
                  const nextPlayer = uno.players[nextPlayerIndex];
-                 drawUnoCardFromDeckLocal(nextPlayer, uno.pendingDraw);
-                 updateUnoStatus(`${nextPlayer.name} drew ${uno.pendingDraw} cards due to action card.`);
-                 uno.pendingDraw = 0;
+                 const drawnCards = unoLocalDrawCardFromDeck(nextPlayer, uno.pendingDraw);
+                 updateUnoStatus(`${nextPlayer.name} drew ${drawnCards.length} cards due to Wild Draw Four.`);
+                 uno.pendingDraw = 0; // Reset pending draw after application
+                 nextUnoTurnLocal(); // Advance turn after draw
+            } else {
+                nextUnoTurnLocal(); // Normal turn progression
             }
-            
-            nextUnoTurnLocal();
+
             checkUnoWinLocal();
         }
 
         /**
-         * Displays the color picker when a Wild card is played.
+         * Displays the color picker when a Wild card is played (LOCAL PLAY).
          * @param {string} cardValue The value of the wild card.
          */
-        function showUnoColorPicker(cardValue) {
+        function showUnoColorPickerLocal(cardValue) {
             const picker = DOM.$('#uno-color-picker');
             picker.style.display = 'flex';
             updateUnoStatus(`${uno.players[uno.currentPlayerIndex].name}, select a new color for the ${cardValue} card.`);
@@ -4088,10 +4377,10 @@
         /**
          * Handles a player declaring "UNO!" (LOCAL PLAY).
          */
-        function declareUno() { // LOCAL PLAY
+        function declareUnoLocal() { // LOCAL PLAY
             const currentPlayer = uno.players[uno.currentPlayerIndex];
             if (currentPlayer.hand.length === 1) {
-                uno.unoDeclared = true;
+                currentPlayer.unoDeclared = true;
                 updateUnoStatus(`${currentPlayer.name} declared UNO!`);
                 DOM.$('#uno-declare-button').style.display = 'none';
             } else {
@@ -4115,7 +4404,7 @@
                 playerIndex = (playerIndex + uno.direction + uno.players.length) % uno.players.length;
             }
             uno.currentPlayerIndex = playerIndex;
-            uno.state = 'playing';
+            uno.state = 'playing'; // Reset state after action/draw
 
             const currentPlayer = uno.players[uno.currentPlayerIndex];
             updateUnoStatus(`${currentPlayer.name}'s turn.`);
@@ -4134,22 +4423,25 @@
             updateUnoStatus(`${currentPlayer.name} (Bot) is thinking...`);
 
             setTimeout(() => {
+                if (uno.state === 'game_over') return;
+
                 if (uno.pendingDraw > 0) {
                     const topCard = uno.discardPile[uno.discardPile.length - 1];
                     const playableDrawCards = currentPlayer.hand.map((card, index) => ({card, index}))
-                        .filter(item => (item.card.value === 'Draw Two' && topCard.value === 'Draw Two') || item.card.value === 'Wild Draw Four');
+                        .filter(item => (item.card.value === 'Draw Two' && topCard.value === 'Draw Two') || 
+                                        (item.card.isWild() && item.card.value === 'Wild Draw Four'));
 
                     if (playableDrawCards.length > 0) {
                         const cardToPlayItem = playableDrawCards[0];
-                        if (currentPlayer.hand.length === 2 && !uno.unoDeclared) {
-                            declareUno();
+                        if (currentPlayer.hand.length === 2 && !currentPlayer.unoDeclared) {
+                            declareUnoLocal();
                         }
-                        playUnoCard(cardToPlayItem.card, cardToPlayItem.index);
+                        playUnoCardLocal(cardToPlayItem.card, cardToPlayItem.index);
                         if (cardToPlayItem.card.isWild()) {
                             botChooseUnoWildColorLocal(currentPlayer);
                         }
                     } else {
-                        const drawn = drawUnoCardFromDeckLocal(currentPlayer, uno.pendingDraw);
+                        const drawn = unoLocalDrawCardFromDeck(currentPlayer, uno.pendingDraw);
                         if (drawn) {
                             uno.pendingDraw = 0;
                             updateUnoStatus(`${currentPlayer.name} (Bot) drew ${Array.isArray(drawn) ? drawn.length : 1} cards due to action. Turn ends.`);
@@ -4160,40 +4452,43 @@
                     return;
                 }
 
-                const playableCards = currentPlayer.hand.map((card, index) => ({card, index})).filter(item => isValidUnoPlay(item.card));
+                const playableCards = currentPlayer.hand.map((card, index) => ({card, index})).filter(item => isValidUnoPlayLocal(item.card));
                 let cardToPlayItem = null;
 
                 if (playableCards.length > 0) {
+                    // Bot strategy:
+                    // 1. Play a matching special card (Skip, Reverse, Draw Two) if possible.
                     cardToPlayItem = playableCards.find(item => UNO_SPECIAL_CARDS.includes(item.card.value) && !item.card.isWild());
-                    
+                    // 2. Otherwise, play a matching number card.
                     if (!cardToPlayItem) {
                         cardToPlayItem = playableCards.find(item => UNO_NUMBERS.includes(item.card.value) && !item.card.isWild());
                     }
-
+                    // 3. If no matching color/number, play a regular Wild card.
                     if (!cardToPlayItem) {
                         cardToPlayItem = playableCards.find(item => item.card.value === 'Wild');
                     }
+                    // 4. Last resort, play a Wild Draw Four.
                     if (!cardToPlayItem) {
                         cardToPlayItem = playableCards.find(item => item.card.value === 'Wild Draw Four');
                     }
                 }
 
                 if (cardToPlayItem) {
-                    if (currentPlayer.hand.length === 2 && !uno.unoDeclared) {
-                        declareUno();
+                    if (currentPlayer.hand.length === 2 && !currentPlayer.unoDeclared) {
+                        declareUnoLocal();
                     }
-                    playUnoCard(cardToPlayItem.card, cardToPlayItem.index);
+                    playUnoCardLocal(cardToPlayItem.card, cardToPlayItem.index);
 
                     if (cardToPlayItem.card.isWild()) {
                         botChooseUnoWildColorLocal(currentPlayer);
                     }
                 } else {
-                    const drawnCard = drawUnoCardFromDeckLocal(currentPlayer);
+                    const drawnCard = unoLocalDrawCardFromDeck(currentPlayer);
                     updateUnoStatus(`${currentPlayer.name} (Bot) drew a card.`);
                     
-                    if (drawnCard && !Array.isArray(drawnCard) && isValidUnoPlay(drawnCard)) {
+                    if (drawnCard && !Array.isArray(drawnCard) && isValidUnoPlayLocal(drawnCard)) {
                         const newCardIndex = currentPlayer.hand.length - 1; 
-                        playUnoCard(drawnCard, newCardIndex);
+                        playUnoCardLocal(drawnCard, newCardIndex);
                          if (drawnCard.isWild()) {
                              botChooseUnoWildColorLocal(currentPlayer);
                          }
@@ -4225,7 +4520,7 @@
                     chosenColor = color;
                 }
             }
-            selectUnoWildColor(chosenColor);
+            selectUnoWildColorLocal(chosenColor);
         }
 
         /**
@@ -4241,13 +4536,14 @@
                 DOM.$('#uno-draw-pile').onclick = null;
                 const endDrawTurnBtn = DOM.$('#uno-end-draw-turn-button');
                 if (endDrawTurnBtn) endDrawTurnBtn.style.display = 'none';
+                renderUnoGame(); // Final render to show empty hand
             }
         }
 
         // --- PASTE CHESS GAME JAVASCRIPT HERE ---
 
         // ===========================================================================================
-        // CHESS GAME (Advanced Simplified)
+        // CHESS GAME (Advanced Simplified - LOCAL PLAY - Will be updated for server in future steps)
         // ===========================================================================================
 
         const CHESS_BOARD_SIZE = 8;
@@ -4339,6 +4635,7 @@
                         if (chess.board[move.r][move.c]) {
                             targetCell.classList.add('highlight-capture');
                         } else {
+                            // Only add dot if it's not already there (e.g., from an occupied cell)
                             if (!targetCell.querySelector('.highlight-move')) {
                                 const highlightDot = DOM.create('div', ['highlight-move']);
                                 targetCell.appendChild(highlightDot);
@@ -4412,6 +4709,7 @@
                     chess.selectedPiece = null;
                     renderChessBoard();
                     updateChessStatus(`${chess.players[chess.currentPlayerIndex].name}'s turn. Invalid move or deselected. Try again.`);
+                    // If clicked another one of own pieces, select it
                     if (pieceCode && getPieceColor(pieceCode) === currentPlayerColor) {
                         chess.selectedPiece = { r, c, piece: pieceCode };
                         renderChessBoard();
@@ -4454,9 +4752,10 @@
 
             if (pieceType === 'P' && ((pieceColor === 'w' && tr === 0) || (pieceColor === 'b' && tr === 7))) {
                 handlePawnPromotionLocal(tr, tc, pieceColor);
-                return;
+                return; // Promotion will call nextTurn
             }
 
+            // Check for king capture (simplified win condition)
             const opponentKingCode = (pieceColor === 'w') ? 'bK' : 'wK';
             let opponentKingFound = false;
             for (let r = 0; r < CHESS_BOARD_SIZE; r++) {
@@ -4493,13 +4792,14 @@
             } else {
                 let promotionChoice = null;
                 do {
+                    // Simplified: only Queen promotion
                     promotionChoice = prompt("Pawn Promotion! Enter 'Q' for Queen.", 'Q');
                     if (promotionChoice === null) {
-                        promotionChoice = 'Q';
+                        promotionChoice = 'Q'; // Default to Queen if cancel
                         break;
                     }
                     promotionChoice = promotionChoice.toUpperCase();
-                } while (promotionChoice !== 'Q');
+                } while (promotionChoice !== 'Q'); // Only Queen for now
                 
                 chess.board[r][c] = color + promotionChoice;
                 updateChessStatus(`${currentPlayer.name}'s pawn promoted to ${promotionChoice}!`);
@@ -4693,7 +4993,7 @@
                     if (c > 0 && r + direction >= 0 && r + direction < CHESS_BOARD_SIZE && boardState[r + direction][c - 1] && getPieceColor(boardState[r + direction][c - 1]) !== color) {
                         addMove(r + direction, c - 1);
                     }
-                    if (c < CHESS_BOARD_SIZE - 1 && r + direction >= 0 && r + direction < CHESS_BOARD_SIZE && boardState[r + direction][c + 1] && getPieceColor(boardState[r + direction][c + 1]) !== color) {
+                    if (c < CHESS_BOARD_SIZE - 1 && r + direction >= 0 && r + direction < CHESS_BOARD_SIZE && boardState[r + direction][c + 1] && boardState[r + direction][c + 1] !== null && getPieceColor(boardState[r + direction][c + 1]) !== color) {
                         addMove(r + direction, c + 1);
                     }
                     break;
